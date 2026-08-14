@@ -101,8 +101,8 @@ export default function Orders() {
               borderBottom: i < filtered.length - 1 ? "1px solid var(--border)" : "none"
             }}
           >
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: "10px" }}>
-              <div style={{ minWidth: 0 }}>
+            <div style={{ display: "flex", flexWrap: "wrap", justifyContent: "space-between", alignItems: "flex-start", gap: "10px" }}>
+              <div style={{ minWidth: 0, flex: "1 1 200px" }}>
                 <p style={{ margin: 0, fontSize: "13px" }}>
                   #{o.id} · {o.customerName}{" "}
                   <Link to={`/receipt/${o.id}`} style={{ fontSize: "11px", color: "var(--green)" }}>receipt</Link>

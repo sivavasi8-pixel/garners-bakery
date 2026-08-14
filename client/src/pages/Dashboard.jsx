@@ -88,6 +88,7 @@ export default function Dashboard() {
                 key={o.id}
                 style={{
                   display: "flex",
+                  flexWrap: "wrap",
                   justifyContent: "space-between",
                   alignItems: "center",
                   padding: "12px 14px",
@@ -96,7 +97,7 @@ export default function Dashboard() {
                   gap: "10px"
                 }}
               >
-                <div style={{ minWidth: 0 }}>
+                <div style={{ minWidth: 0, flex: "1 1 200px" }}>
                   <p style={{ margin: 0, fontSize: "13px" }}>
                     #{o.id} · {o.customerName}{" "}
                     <Link to={`/receipt/${o.id}`} style={{ fontSize: "11px", color: "var(--green)" }}>receipt</Link>

@@ -148,6 +148,7 @@ export default function Inventory() {
               key={item.id}
               style={{
                 display: "flex",
+                flexWrap: "wrap",
                 justifyContent: "space-between",
                 alignItems: "center",
                 padding: "12px 14px",
@@ -156,13 +157,13 @@ export default function Inventory() {
                 gap: "10px"
               }}
             >
-              <div style={{ minWidth: 0 }}>
+              <div style={{ minWidth: 0, flex: "1 1 160px" }}>
                 <p style={{ margin: 0, fontSize: "13px" }}>{item.name}</p>
                 <p style={{ margin: "3px 0 0", fontSize: "12px", color: "var(--text-secondary)" }}>
                   Reorder level: {item.reorderLevel} {item.unit} · {item.supplier}
                 </p>
               </div>
-              <div style={{ display: "flex", alignItems: "center", gap: "10px", flexShrink: 0 }}>
+              <div style={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: "10px" }}>
                 <div style={{ textAlign: "right" }}>
                   <p style={{ margin: "0 0 4px", fontSize: "13px" }}>
                     {item.quantity} {item.unit} left

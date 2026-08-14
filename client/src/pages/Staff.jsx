@@ -179,6 +179,7 @@ export default function Staff() {
                 key={s.id}
                 style={{
                   display: "flex",
+                  flexWrap: "wrap",
                   justifyContent: "space-between",
                   alignItems: "center",
                   padding: "12px 14px",
@@ -262,27 +263,27 @@ export default function Staff() {
               style={{ border: "1px solid var(--border)", borderRadius: "var(--radius)", padding: "12px", marginTop: "14px" }}
             >
               <p style={{ margin: "0 0 8px", fontSize: "13px", fontWeight: 500 }}>Add a staff member</p>
-              <div style={{ display: "flex", gap: "8px", marginBottom: "8px" }}>
+              <div style={{ display: "flex", flexWrap: "wrap", gap: "8px", marginBottom: "8px" }}>
                 <input
                   type="text"
                   placeholder="Name"
                   value={newStaff.name}
                   onChange={(e) => setNewStaff({ ...newStaff, name: e.target.value })}
-                  style={{ flex: 1, padding: "7px 9px", fontSize: "12px", border: "1px solid var(--border)", borderRadius: "6px" }}
+                  style={{ flex: 1, minWidth: "120px", padding: "7px 9px", fontSize: "12px", border: "1px solid var(--border)", borderRadius: "6px" }}
                 />
                 <input
                   type="text"
                   placeholder="Role (e.g. Baker)"
                   value={newStaff.role}
                   onChange={(e) => setNewStaff({ ...newStaff, role: e.target.value })}
-                  style={{ flex: 1, padding: "7px 9px", fontSize: "12px", border: "1px solid var(--border)", borderRadius: "6px" }}
+                  style={{ flex: 1, minWidth: "120px", padding: "7px 9px", fontSize: "12px", border: "1px solid var(--border)", borderRadius: "6px" }}
                 />
                 <input
                   type="text"
                   placeholder="Shift (e.g. 9am–5pm)"
                   value={newStaff.shift}
                   onChange={(e) => setNewStaff({ ...newStaff, shift: e.target.value })}
-                  style={{ flex: 1, padding: "7px 9px", fontSize: "12px", border: "1px solid var(--border)", borderRadius: "6px" }}
+                  style={{ flex: 1, minWidth: "120px", padding: "7px 9px", fontSize: "12px", border: "1px solid var(--border)", borderRadius: "6px" }}
                 />
               </div>
 
@@ -296,20 +297,20 @@ export default function Staff() {
               </label>
 
               {newStaff.grantLogin && (
-                <div style={{ display: "flex", gap: "8px", marginBottom: "8px" }}>
+                <div style={{ display: "flex", flexWrap: "wrap", gap: "8px", marginBottom: "8px" }}>
                   <input
                     type="email"
                     placeholder="Email"
                     value={newStaff.email}
                     onChange={(e) => setNewStaff({ ...newStaff, email: e.target.value })}
-                    style={{ flex: 1, padding: "7px 9px", fontSize: "12px", border: "1px solid var(--border)", borderRadius: "6px" }}
+                    style={{ flex: 1, minWidth: "140px", padding: "7px 9px", fontSize: "12px", border: "1px solid var(--border)", borderRadius: "6px" }}
                   />
                   <input
                     type="password"
                     placeholder="Password (min 6 chars)"
                     value={newStaff.password}
                     onChange={(e) => setNewStaff({ ...newStaff, password: e.target.value })}
-                    style={{ flex: 1, padding: "7px 9px", fontSize: "12px", border: "1px solid var(--border)", borderRadius: "6px" }}
+                    style={{ flex: 1, minWidth: "140px", padding: "7px 9px", fontSize: "12px", border: "1px solid var(--border)", borderRadius: "6px" }}
                   />
                 </div>
               )}

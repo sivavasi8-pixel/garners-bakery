@@ -48,6 +48,7 @@ export default function MyOrders() {
               key={o.id}
               style={{
                 display: "flex",
+                flexWrap: "wrap",
                 justifyContent: "space-between",
                 alignItems: "center",
                 padding: "12px 14px",
@@ -56,7 +57,7 @@ export default function MyOrders() {
                 gap: "10px"
               }}
             >
-              <div style={{ minWidth: 0 }}>
+              <div style={{ minWidth: 0, flex: "1 1 200px" }}>
                 <p style={{ margin: 0, fontSize: "13px" }}>
                   #{o.id} · {new Date(o.createdAt).toLocaleDateString()}{" "}
                   <Link to={`/receipt/${o.id}`} style={{ fontSize: "11px", color: "var(--green)" }}>receipt</Link>

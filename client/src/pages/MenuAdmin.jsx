@@ -228,6 +228,7 @@ export default function MenuAdmin() {
               <div
                 style={{
                   display: "flex",
+                  flexWrap: "wrap",
                   alignItems: "center",
                   gap: "12px",
                   padding: "12px 14px",
@@ -251,7 +252,7 @@ export default function MenuAdmin() {
                     }}
                   />
                 )}
-                <div style={{ flex: 1 }}>
+                <div style={{ flex: "1 1 160px" }}>
                   <p style={{ margin: 0, fontSize: "13px", fontWeight: 500 }}>
                     {item.name}
                     {!item.inStock && (
