@@ -99,6 +99,15 @@ export default function TopNav() {
         </nav>
 
         <div style={{ display: "flex", alignItems: "center", gap: "10px", fontSize: "13px" }}>
+          <a
+            href="/handbook.html"
+            target="_blank"
+            rel="noopener noreferrer"
+            style={{ fontSize: "12px", color: "rgba(246,241,228,0.75)", textDecoration: "none" }}
+            title="How to use this app"
+          >
+            📖 Guide
+          </a>
           {user ? (
             <>
               <NotificationBell />
