@@ -189,7 +189,7 @@ export default function Order() {
         ))}
       </div>
 
-      <div style={{ display: "grid", gridTemplateColumns: "1.4fr 1fr", gap: "20px" }}>
+      <div className="split-2col" style={{ display: "grid", gridTemplateColumns: "1.4fr 1fr", gap: "20px" }}>
         {activeCategory === "custom" ? (
           customCakeItem ? (
             <CustomCakeForm pricePerKg={customCakeItem.price} onAdd={addCustomCake(customCakeItem.id)} />
@@ -197,7 +197,7 @@ export default function Order() {
             <p style={{ fontSize: "13px", color: "var(--text-secondary)" }}>Custom cakes aren't available right now.</p>
           )
         ) : (
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "12px", alignContent: "start" }}>
+          <div className="split-2col" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "12px", alignContent: "start" }}>
             {shown.map((item) => (
               <div
                 key={item.id}

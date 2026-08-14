@@ -104,8 +104,8 @@ export default function POS() {
         ))}
       </div>
 
-      <div style={{ display: "grid", gridTemplateColumns: "1.4fr 1fr", gap: "20px" }}>
-        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "12px", alignContent: "start" }}>
+      <div className="split-2col" style={{ display: "grid", gridTemplateColumns: "1.4fr 1fr", gap: "20px" }}>
+        <div className="split-2col" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "12px", alignContent: "start" }}>
           {shown.map((item) => (
             <div
               key={item.id}

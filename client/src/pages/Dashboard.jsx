@@ -76,7 +76,7 @@ export default function Dashboard() {
         />
       </div>
 
-      <div style={{ display: "grid", gridTemplateColumns: "1.3fr 1fr", gap: "20px" }}>
+      <div className="split-2col" style={{ display: "grid", gridTemplateColumns: "1.3fr 1fr", gap: "20px" }}>
         <section>
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "10px" }}>
             <h2 style={{ fontSize: "16px" }}>Order queue</h2>

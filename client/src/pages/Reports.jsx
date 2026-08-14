@@ -302,7 +302,7 @@ export default function Reports() {
 
   return (
     <div style={{ padding: "28px", maxWidth: "1100px", margin: "0 auto" }}>
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", flexWrap: "wrap", gap: "12px" }}>
         <div>
           <h1 style={{ fontSize: "24px", marginBottom: "4px" }}>Reports</h1>
           <p style={{ color: "var(--text-secondary)", fontSize: "14px", marginBottom: "24px" }}>
@@ -346,7 +346,7 @@ export default function Reports() {
         <MetricCard label="Delivered" value={data.ordersByStatus.delivered || 0} />
       </div>
 
-      <div style={{ display: "grid", gridTemplateColumns: "1.4fr 1fr", gap: "20px", marginBottom: "20px" }}>
+      <div className="split-2col" style={{ display: "grid", gridTemplateColumns: "1.4fr 1fr", gap: "20px", marginBottom: "20px" }}>
         <section style={{ border: "1px solid var(--border)", borderRadius: "var(--radius)", padding: "18px" }}>
           <h2 style={{ fontSize: "16px", marginBottom: "10px" }}>Revenue, last 7 days</h2>
           <RevenueChart days={data.last7Days} />

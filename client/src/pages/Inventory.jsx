@@ -141,7 +141,7 @@ export default function Inventory() {
 
       {actionError && <p style={{ fontSize: "13px", color: "var(--red)", marginBottom: "14px" }}>{actionError}</p>}
 
-      <div style={{ display: "grid", gridTemplateColumns: isOwner ? "1fr 320px" : "1fr", gap: "24px" }}>
+      <div className="split-2col" style={{ display: "grid", gridTemplateColumns: isOwner ? "1fr 320px" : "1fr", gap: "24px" }}>
         <div style={{ border: "1px solid var(--border)", borderRadius: "var(--radius)", overflow: "hidden" }}>
           {sorted.map((item, i) => (
             <div

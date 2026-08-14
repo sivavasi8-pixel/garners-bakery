@@ -32,8 +32,13 @@
 
 * { box-sizing: border-box; }
 
-body {
+html, body {
   margin: 0;
+  /* Safety net: nothing on the page should be able to force sideways scroll —
+     any element that overflows just clips instead of dragging the whole page
+     into a scrolled, half-cut-off state (see TopNav's mobile menu for the
+     actual fix; this is the backstop for anything else that overflows). */
+  overflow-x: hidden;
   background: var(--surface-0);
   color: var(--text-primary);
   font-family: var(--font-body);
@@ -61,5 +66,33 @@ a { color: inherit; }
   }
   body {
     background: #fff;
+  }
+}
+
+/* ---------------------------------------------------------------------
+   Responsive layout helpers.
+   Pages set their own grid-template-columns inline (e.g. "1.4fr 1fr" or
+   "1fr 320px") for desktop, per page. Adding this class on top forces a
+   single column below the breakpoint — the !important is required because
+   a plain stylesheet rule can never outrank an inline style otherwise.
+   --------------------------------------------------------------------- */
+@media (max-width: 760px) {
+  .split-2col {
+    grid-template-columns: 1fr !important;
+  }
+}
+
+/* TopNav mobile menu — see components/TopNav.jsx. Hidden/shown purely by
+   CSS so it can never get stuck open/closed if the state and viewport
+   width disagree (e.g. resizing a browser window). */
+.nav-toggle { display: none; }
+.nav-mobile-panel { display: none; }
+
+@media (max-width: 860px) {
+  .nav-links-desktop { display: none !important; }
+  .nav-toggle { display: inline-flex !important; }
+  .nav-mobile-panel.open {
+    display: flex !important;
+    flex-direction: column;
   }
 }

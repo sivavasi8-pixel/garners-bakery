@@ -221,7 +221,7 @@ export default function MenuAdmin() {
         Add, edit, and photograph what's for sale — this is what customers see on the Order page.
       </p>
 
-      <div style={{ display: "grid", gridTemplateColumns: "1fr 320px", gap: "24px" }}>
+      <div className="split-2col" style={{ display: "grid", gridTemplateColumns: "1fr 320px", gap: "24px" }}>
         <div style={{ border: "1px solid var(--border)", borderRadius: "var(--radius)", overflow: "hidden" }}>
           {items.map((item, i) => (
             <div key={item.id} style={{ borderBottom: i < items.length - 1 ? "1px solid var(--border)" : "none" }}>

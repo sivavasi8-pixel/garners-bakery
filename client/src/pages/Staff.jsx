@@ -170,7 +170,7 @@ export default function Staff() {
 
       {actionError && <p style={{ fontSize: "13px", color: "var(--red)", marginBottom: "14px" }}>{actionError}</p>}
 
-      <div style={{ display: "grid", gridTemplateColumns: "1.3fr 1fr", gap: "20px" }}>
+      <div className="split-2col" style={{ display: "grid", gridTemplateColumns: "1.3fr 1fr", gap: "20px" }}>
         <section>
           <h2 style={{ fontSize: "16px", marginBottom: "10px" }}>Today's roster</h2>
           <div style={{ border: "1px solid var(--border)", borderRadius: "var(--radius)", overflow: "hidden" }}>
