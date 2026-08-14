@@ -1,0 +1,16 @@
+# Render "Blueprint" — when you connect this repo on Render, it reads this file
+# and pre-fills the service config below. You still set the two secret values
+# (DATABASE_URL, JWT_SECRET) yourself in the Render dashboard; nothing secret
+# lives in this file or in git.
+services:
+  - type: web
+    name: garners-bakery
+    runtime: node
+    plan: free
+    buildCommand: npm run build
+    startCommand: npm start
+    envVars:
+      - key: DATABASE_URL
+        sync: false # set manually in the Render dashboard — your Neon connection string
+      - key: JWT_SECRET
+        sync: false # set manually in the Render dashboard — any long random string

@@ -1,0 +1,13 @@
+{
+  "name": "garners-bakery",
+  "version": "1.0.0",
+  "private": true,
+  "description": "GARNERS Bakery — shop management platform (owner, staff, customer)",
+  "scripts": {
+    "server": "node server/index.js",
+    "client": "cd client && npm run dev",
+    "dev": "concurrently \"npm run server\" \"npm run client\"",
+    "build": "npm install --prefix server && npm install --prefix client && npm run build --prefix client",
+    "start": "node server/index.js"
+  }
+}

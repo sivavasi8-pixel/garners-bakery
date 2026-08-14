@@ -1,0 +1,65 @@
+:root {
+  /* GARNERS brand palette, drawn from real storefront + packaging photos */
+  --green: #1f3d2e;
+  --green-dark: #142a1f;
+  --cream: #f6f1e4;
+  --kraft: #c9a063;
+  --kraft-light: #ecdfc0;
+  --red: #a13a2e;
+  --wood: #6b4a32;
+  --charcoal: #2b2823;
+  --teal-wall: #2e4a46;
+  --gold: #b8923f; /* metallic foil from gift-hamper packaging — premium/gifting contexts only */
+
+  --text-primary: var(--charcoal);
+  --text-secondary: #6b6558;
+  --text-muted: #a39d8c;
+  --text-inverse: var(--cream);
+
+  --surface-0: var(--cream);
+  --surface-1: #ffffff;
+  --surface-2: var(--kraft-light);
+
+  --border: #e2d7bd;
+  --border-strong: var(--kraft);
+
+  --radius: 10px;
+  --radius-lg: 16px;
+
+  --font-display: "Fraunces", Georgia, serif;
+  --font-body: "Inter", -apple-system, sans-serif;
+}
+
+* { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  background: var(--surface-0);
+  color: var(--text-primary);
+  font-family: var(--font-body);
+  -webkit-font-smoothing: antialiased;
+}
+
+h1, h2, h3 {
+  font-family: var(--font-display);
+  font-weight: 500;
+  margin: 0;
+}
+
+button {
+  font-family: var(--font-body);
+  cursor: pointer;
+}
+
+a { color: inherit; }
+
+/* Used by the Reports page's "Print / Save as PDF" button — hides chrome that
+   shouldn't end up on a printed page (nav bar, the export buttons themselves). */
+@media print {
+  header, .no-print {
+    display: none !important;
+  }
+  body {
+    background: #fff;
+  }
+}
