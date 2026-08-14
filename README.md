@@ -229,6 +229,56 @@ somewhere fresh and need to (re)connect a database:
 case, since `server/data/*.js` now query Postgres directly rather than
 falling back to in-memory arrays).
 
+## Deploying (free)
+
+One [Render](https://render.com) free web service serves **both** the API
+and the built React frontend from the same origin — no separate frontend
+host, no CORS setup. Product photos are already stored in Postgres (not on
+local disk), which matters here: Render's free-tier filesystem doesn't
+persist across restarts, so anything saved to disk would vanish on every
+redeploy.
+
+`npm run build` (root `package.json`) installs both `server/` and
+`client/` deps and runs `vite build`, producing `client/dist`. At startup,
+`server/index.js` serves that folder as static files and falls back to
+`index.html` for any non-`/api` route (so React Router's client-side routes
+work on a hard refresh) — see the `fs.existsSync(clientDist)` block. Locally
+in dev, that folder doesn't exist (the client runs separately via
+`vite dev`), so this is a no-op and doesn't change your day-to-day workflow.
+
+**Steps:**
+
+1. **Push this repo to GitHub** (free) — create an empty repository there,
+   then from this folder:
+   ```
+   git remote add origin <your-repo-url>
+   git push -u origin main
+   ```
+2. **Sign up at [render.com](https://render.com)** (free, no card required for
+   the free tier — GitHub login works) and click **New → Web Service**,
+   connecting the GitHub repo you just pushed.
+3. Render reads `render.yaml` in this repo and pre-fills the build/start
+   commands. You still need to set two environment variables yourself in the
+   Render dashboard (secrets never live in the repo):
+   - `DATABASE_URL` — your existing Neon connection string (same one in your
+     local `server/.env`)
+   - `JWT_SECRET` — any long random string (don't reuse the local dev one)
+4. Deploy. First build takes a few minutes; Render gives you a
+   `https://<your-service>.onrender.com` URL when it's done.
+
+**The free-tier catch:** the service spins down after 15 minutes with no
+traffic, and the next visit takes ~30–50 seconds to wake back up. Fine for a
+portfolio/demo link; not what you'd want for a real live shop taking orders
+— that needs a paid tier (or a different host) to stay warm.
+
+**Redeploying**: any future `git push` to the connected branch triggers a
+new Render build+deploy automatically — no dashboard clicking needed.
+
+**Also worth doing before this goes anywhere public:** rotate `JWT_SECRET`
+away from the local dev value, and consider changing the seeded owner/staff
+passwords in `server/db/schema.sql` (or better, replace those seeded
+accounts) — see "Dev seed logins" above.
+
 ## Design
 
 See `DESIGN.md` for the brand palette and design tokens, drawn from
