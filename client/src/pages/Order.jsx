@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import { api } from "../api";
 import { useAuth } from "../auth/AuthContext";
@@ -15,16 +15,6 @@ const paymentOptions = [
   { id: "upi", label: "UPI" },
   { id: "card", label: "Card" }
 ];
-
-const fieldStyle = {
-  width: "100%",
-  padding: "8px 10px",
-  fontSize: "13px",
-  border: "1px solid var(--border)",
-  borderRadius: "8px",
-  marginBottom: "10px",
-  boxSizing: "border-box"
-};
 
 function CustomCakeForm({ pricePerKg, onAdd }) {
   const [size, setSize] = useState("1");
@@ -45,48 +35,38 @@ function CustomCakeForm({ pricePerKg, onAdd }) {
   };
 
   return (
-    <form
-      onSubmit={handleSubmit}
-      style={{ border: "1px solid var(--border)", borderRadius: "var(--radius-lg)", padding: "16px", background: "var(--surface-1)" }}
-    >
-      <p style={{ margin: "0 0 4px", fontSize: "13px", fontWeight: 500 }}>Design your cake</p>
-      <p style={{ margin: "0 0 14px", fontSize: "12px", color: "var(--text-secondary)" }}>
-        ₹{pricePerKg}/kg — decorated, baked to order.
-      </p>
+    <form onSubmit={handleSubmit} className="custom-cake-form">
+      <p className="custom-cake-title">Design your cake</p>
+      <p className="custom-cake-rate">₹{pricePerKg}/kg — decorated, baked to order.</p>
 
-      <label style={{ fontSize: "11px", color: "var(--text-secondary)" }}>Size (kg)</label>
-      <input type="number" min="0.5" step="0.5" value={size} onChange={(e) => setSize(e.target.value)} style={fieldStyle} required />
+      <label className="field-label">Size (kg)</label>
+      <input type="number" min="0.5" step="0.5" value={size} onChange={(e) => setSize(e.target.value)} className="field-input" required />
 
-      <label style={{ fontSize: "11px", color: "var(--text-secondary)" }}>Flavor</label>
+      <label className="field-label">Flavor</label>
       <input
         type="text"
         placeholder="e.g. Chocolate truffle, Red velvet"
         value={flavor}
         onChange={(e) => setFlavor(e.target.value)}
-        style={fieldStyle}
+        className="field-input"
         required
       />
 
-      <label style={{ fontSize: "11px", color: "var(--text-secondary)" }}>Message on cake (optional)</label>
+      <label className="field-label">Message on cake (optional)</label>
       <input
         type="text"
         placeholder="e.g. Happy Birthday Aanya!"
         value={message}
         onChange={(e) => setMessage(e.target.value)}
-        style={fieldStyle}
+        className="field-input"
       />
 
-      <label style={{ fontSize: "11px", color: "var(--text-secondary)" }}>Needed by</label>
-      <input type="date" value={neededBy} onChange={(e) => setNeededBy(e.target.value)} style={fieldStyle} />
+      <label className="field-label">Needed by</label>
+      <input type="date" value={neededBy} onChange={(e) => setNeededBy(e.target.value)} className="field-input" />
 
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: "4px" }}>
-        <span style={{ fontSize: "13px", fontWeight: 500 }}>₹{price || 0}</span>
-        <button
-          type="submit"
-          style={{ padding: "8px 16px", fontSize: "13px", background: "var(--green)", color: "var(--cream)", border: "none", borderRadius: "8px" }}
-        >
-          Add to order
-        </button>
+      <div className="custom-cake-footer">
+        <span className="custom-cake-price">₹{price || 0}</span>
+        <button type="submit" className="btn-add-cake">Add to order</button>
       </div>
     </form>
   );
@@ -104,6 +84,7 @@ export default function Order() {
   const [checkoutError, setCheckoutError] = useState(null);
   const { user } = useAuth();
   const canOrder = user && user.role === "customer";
+  const cartRef = useRef(null);
 
   useEffect(() => {
     api.getMenu().then((d) => setMenu(d.items)).catch((e) => setError(e.message));
@@ -135,6 +116,7 @@ export default function Order() {
   };
 
   const total = cart.reduce((sum, c) => sum + (c.price || 0) * c.qty, 0);
+  const cartCount = cart.reduce((n, c) => n + c.qty, 0);
 
   const handleCheckout = async () => {
     setCheckoutError(null);
@@ -157,6 +139,8 @@ export default function Order() {
     }
   };
 
+  const scrollToCart = () => cartRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+
   if (error) return <p style={{ padding: 28, color: "var(--red)" }}>Couldn't load menu: {error}</p>;
   if (!menu) return <p style={{ padding: 28, color: "var(--text-secondary)" }}>Loading menu…</p>;
 
@@ -165,87 +149,34 @@ export default function Order() {
   const specials = menu.filter((m) => m.isSpecial);
 
   return (
-    <div style={{ padding: "28px", maxWidth: "1100px", margin: "0 auto" }}>
-      <h1 style={{ fontSize: "24px", marginBottom: "4px" }}>Order online</h1>
-      <p style={{ color: "var(--text-secondary)", fontSize: "14px", marginBottom: "20px" }}>
-        Store pick up · oven fresh daily bakes.
-      </p>
+    <div className="page order-page">
+      <p className="eyebrow">Store pick up · oven fresh daily bakes</p>
+      <h1 className="page-title">Order online</h1>
 
       {specials.length > 0 && (
-        <div style={{ marginBottom: "24px" }}>
-          <div style={{ display: "flex", alignItems: "baseline", gap: "8px", marginBottom: "10px" }}>
-            <h2 style={{ fontSize: "15px" }}>✨ Today's Specials</h2>
-            <span style={{ fontSize: "11.5px", color: "var(--text-secondary)" }}>Fresh picks, today only</span>
+        <div className="specials-section">
+          <div className="specials-heading">
+            <h2>✨ Today's Specials</h2>
+            <span>Fresh picks, today only</span>
           </div>
-          <div
-            style={{
-              display: "grid",
-              gridTemplateColumns: "repeat(auto-fit, minmax(150px, 1fr))",
-              gap: "12px"
-            }}
-          >
+          <div className="specials-grid">
             {specials.map((item) => (
-              <div
-                key={item.id}
-                style={{
-                  position: "relative",
-                  overflow: "hidden",
-                  border: "1.5px solid var(--kraft)",
-                  borderRadius: "var(--radius-lg)",
-                  padding: "12px",
-                  background: "var(--surface-1)"
-                }}
-              >
-                <span
-                  style={{
-                    position: "absolute",
-                    top: "10px",
-                    right: "-28px",
-                    background: "var(--kraft)",
-                    color: "var(--charcoal)",
-                    fontSize: "9.5px",
-                    fontWeight: 700,
-                    letterSpacing: "0.03em",
-                    padding: "3px 30px",
-                    transform: "rotate(35deg)",
-                    textTransform: "uppercase"
-                  }}
-                >
-                  Today only
-                </span>
+              <div key={item.id} className="special-card">
+                <span className="special-ribbon">Today only</span>
                 {item.imageUrl ? (
-                  <img
-                    src={item.imageUrl}
-                    alt={item.name}
-                    style={{ width: "100%", height: 68, borderRadius: "9px", marginBottom: "9px", objectFit: "cover" }}
-                  />
+                  <img src={item.imageUrl} alt={item.name} className="special-photo" />
                 ) : (
-                  <div style={{ width: "100%", height: 68, borderRadius: "9px", marginBottom: "9px", background: "var(--surface-2)" }} />
+                  <div className="special-photo special-photo-empty" />
                 )}
-                <p style={{ margin: 0, fontSize: "13px", fontWeight: 600 }}>{item.name}</p>
-                <p style={{ margin: "3px 0 0", fontSize: "11.5px", color: "var(--text-secondary)", minHeight: "30px" }}>
-                  {item.description}
-                </p>
-                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: "9px" }}>
-                  <span style={{ fontSize: "13px", fontWeight: 600 }}>
-                    {item.price ? `₹${item.price}` : "made to order"}
-                  </span>
+                <p className="special-name">{item.name}</p>
+                <p className="special-desc">{item.description}</p>
+                <div className="special-footer">
+                  <span className="special-price">{item.price ? `₹${item.price}` : "made to order"}</span>
                   {!item.inStock ? (
-                    <span style={{ fontSize: "11px", color: "var(--red)" }}>Sold out</span>
+                    <span className="sold-out">Sold out</span>
                   ) : (
                     item.price && (
-                      <button
-                        onClick={() => addToCart(item)}
-                        style={{
-                          padding: "5px 11px",
-                          fontSize: "11px",
-                          border: "1px solid var(--wood)",
-                          borderRadius: "6px",
-                          background: "var(--surface-1)"
-                        }}
-                      >
-                        Add
-                      </button>
+                      <button onClick={() => addToCart(item)} className="btn-add-special">Add</button>
                     )
                   )}
                 </div>
@@ -255,171 +186,84 @@ export default function Order() {
         </div>
       )}
 
-      <div style={{ display: "flex", gap: "8px", marginBottom: "20px", flexWrap: "wrap" }}>
+      <div className="category-scroll">
         {categories.map((c) => (
           <button
             key={c.id}
             onClick={() => setActiveCategory(c.id)}
-            style={{
-              padding: "7px 16px",
-              borderRadius: "8px",
-              border: "1px solid var(--border)",
-              fontSize: "13px",
-              background: activeCategory === c.id ? "var(--green)" : "var(--surface-1)",
-              color: activeCategory === c.id ? "var(--cream)" : "var(--text-secondary)"
-            }}
+            className={`chip${activeCategory === c.id ? " chip-active" : ""}`}
           >
             {c.label}
           </button>
         ))}
       </div>
 
-      <div className="split-2col" style={{ display: "grid", gridTemplateColumns: "1.4fr 1fr", gap: "20px" }}>
+      <div className="order-layout">
         {activeCategory === "custom" ? (
           customCakeItem ? (
             <CustomCakeForm pricePerKg={customCakeItem.price} onAdd={addCustomCake(customCakeItem.id)} />
           ) : (
-            <p style={{ fontSize: "13px", color: "var(--text-secondary)" }}>Custom cakes aren't available right now.</p>
+            <p className="empty-note">Custom cakes aren't available right now.</p>
           )
         ) : (
-          <div className="split-2col" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "12px", alignContent: "start" }}>
+          <div className="product-grid">
             {shown.map((item) => (
-              <div
-                key={item.id}
-                style={{
-                  border: "1px solid var(--border)",
-                  borderRadius: "var(--radius-lg)",
-                  padding: "14px",
-                  background: "var(--surface-1)",
-                  opacity: item.inStock ? 1 : 0.6
-                }}
-              >
+              <div key={item.id} className={`product-card${!item.inStock ? " product-card-out" : ""}`}>
                 {item.imageUrl ? (
-                  <img
-                    src={item.imageUrl}
-                    alt={item.name}
-                    style={{
-                      width: "100%",
-                      height: 70,
-                      borderRadius: "8px",
-                      marginBottom: "10px",
-                      objectFit: "cover"
-                    }}
-                  />
+                  <img src={item.imageUrl} alt={item.name} className="product-photo" />
                 ) : (
-                  <div
-                    style={{
-                      width: "100%",
-                      height: 70,
-                      borderRadius: "8px",
-                      background: "var(--surface-2)",
-                      marginBottom: "10px"
-                    }}
-                  />
+                  <div className="product-photo product-photo-empty">🍞</div>
                 )}
-                <p style={{ margin: 0, fontSize: "13px", fontWeight: 500 }}>{item.name}</p>
-                <p style={{ margin: "3px 0 10px", fontSize: "12px", color: "var(--text-secondary)" }}>
-                  {item.description}
-                </p>
-                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                  <span style={{ fontSize: "13px", fontWeight: 500 }}>
-                    {item.price ? `₹${item.price}` : "made to order"}
-                  </span>
-                  {!item.inStock ? (
-                    <span style={{ fontSize: "12px", color: "var(--red)" }}>Sold out</span>
-                  ) : (
-                    item.price && (
-                      <button
-                        onClick={() => addToCart(item)}
-                        style={{
-                          padding: "5px 12px",
-                          fontSize: "12px",
-                          border: "1px solid var(--border-strong)",
-                          borderRadius: "6px",
-                          background: "var(--surface-1)"
-                        }}
-                      >
-                        Add
-                      </button>
-                    )
-                  )}
+                <div className="product-body">
+                  <p className="product-name">{item.name}</p>
+                  <p className="product-desc">{item.description}</p>
+                  <div className="product-footer">
+                    <span className="product-price">{item.price ? `₹${item.price}` : "made to order"}</span>
+                    {!item.inStock ? (
+                      <span className="sold-out">Sold out</span>
+                    ) : (
+                      item.price && (
+                        <button onClick={() => addToCart(item)} className="btn-add">Add</button>
+                      )
+                    )}
+                  </div>
                 </div>
               </div>
             ))}
             {shown.length === 0 && (
-              <p style={{ fontSize: "13px", color: "var(--text-secondary)" }}>Nothing in this category yet.</p>
+              <p className="empty-note">Nothing in this category yet.</p>
             )}
           </div>
         )}
 
-        <aside>
-          <h2 style={{ fontSize: "16px", marginBottom: "10px" }}>Your order</h2>
+        <aside className="cart-panel" ref={cartRef}>
+          <h2 className="section-title">Your order</h2>
 
           {placedOrder ? (
-            <div style={{ border: "1px solid var(--border)", borderRadius: "var(--radius)", padding: "14px" }}>
-              <p style={{ margin: "0 0 6px", fontSize: "13px", fontWeight: 500 }}>
-                Order #{placedOrder.id} placed!
-              </p>
-              <p style={{ margin: "0 0 12px", fontSize: "12px", color: "var(--text-secondary)" }}>
+            <div className="placed-order-card">
+              <p className="placed-order-title">Order #{placedOrder.id} placed!</p>
+              <p className="placed-order-meta">
                 Status: {placedOrder.status} · Pickup: {placedOrder.pickupTime} · Payment:{" "}
                 {placedOrder.paymentStatus === "paid" ? "paid" : "pay on pickup"}
               </p>
-              <Link
-                to={`/receipt/${placedOrder.id}`}
-                style={{
-                  display: "block",
-                  textAlign: "center",
-                  width: "100%",
-                  padding: "9px",
-                  fontSize: "13px",
-                  background: "var(--green)",
-                  color: "var(--cream)",
-                  borderRadius: "8px",
-                  textDecoration: "none",
-                  boxSizing: "border-box",
-                  marginBottom: "8px"
-                }}
-              >
+              <Link to={`/receipt/${placedOrder.id}`} className="btn-checkout" style={{ display: "block", textAlign: "center", textDecoration: "none", marginBottom: "8px" }}>
                 View / print receipt
               </Link>
-              <button
-                onClick={() => setPlacedOrder(null)}
-                style={{
-                  width: "100%",
-                  padding: "9px",
-                  fontSize: "13px",
-                  background: "var(--surface-2)",
-                  border: "1px solid var(--border-strong)",
-                  borderRadius: "8px"
-                }}
-              >
+              <button onClick={() => setPlacedOrder(null)} className="btn-secondary">
                 Place another order
               </button>
             </div>
           ) : (
             <>
-              <div style={{ border: "1px solid var(--border)", borderRadius: "var(--radius)", padding: "4px 14px", marginBottom: "14px" }}>
-                {cart.length === 0 && (
-                  <p style={{ fontSize: "13px", color: "var(--text-secondary)", padding: "12px 0" }}>
-                    Your cart is empty.
-                  </p>
-                )}
-                {cart.map((c, i) => (
-                  <div
-                    key={c.id}
-                    style={{
-                      padding: "9px 0",
-                      borderBottom: i < cart.length - 1 ? "1px solid var(--border)" : "none",
-                      fontSize: "13px"
-                    }}
-                  >
-                    <div style={{ display: "flex", justifyContent: "space-between" }}>
+              <div className="cart-list">
+                {cart.length === 0 && <p className="empty-note">Your cart is empty.</p>}
+                {cart.map((c) => (
+                  <div key={c.id} className="cart-row">
+                    <div className="cart-row-main">
                       <span>{c.name}{c.qty > 1 ? ` x${c.qty}` : ""}</span>
                       <span>₹{c.price * c.qty}</span>
                     </div>
-                    {c.note && (
-                      <p style={{ margin: "3px 0 0", fontSize: "11px", color: "var(--text-secondary)" }}>{c.note}</p>
-                    )}
+                    {c.note && <p className="cart-row-note">{c.note}</p>}
                   </div>
                 ))}
               </div>
@@ -431,9 +275,9 @@ export default function Order() {
                     placeholder="Pickup time (e.g. 5:00 PM today)"
                     value={pickupTime}
                     onChange={(e) => setPickupTime(e.target.value)}
-                    style={fieldStyle}
+                    className="field-input"
                   />
-                  <select value={paymentMethod} onChange={(e) => setPaymentMethod(e.target.value)} style={fieldStyle}>
+                  <select value={paymentMethod} onChange={(e) => setPaymentMethod(e.target.value)} className="field-input">
                     {paymentOptions.map((p) => (
                       <option key={p.id} value={p.id}>{p.label}</option>
                     ))}
@@ -441,37 +285,23 @@ export default function Order() {
                 </>
               )}
 
-              <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "12px" }}>
-                <span style={{ fontSize: "13px", color: "var(--text-secondary)" }}>Total</span>
-                <span style={{ fontSize: "16px", fontWeight: 500 }}>₹{total}</span>
+              <div className="cart-total-row">
+                <span className="cart-total-label">Total</span>
+                <span className="cart-total-value">₹{total}</span>
               </div>
 
-              {checkoutError && (
-                <p style={{ fontSize: "12px", color: "var(--red)", marginBottom: "10px" }}>{checkoutError}</p>
-              )}
+              {checkoutError && <p className="checkout-error">{checkoutError}</p>}
 
               {canOrder ? (
-                <button
-                  onClick={handleCheckout}
-                  disabled={cart.length === 0 || placing}
-                  style={{
-                    width: "100%",
-                    padding: "10px",
-                    fontSize: "13px",
-                    background: cart.length ? "var(--green)" : "var(--surface-2)",
-                    color: cart.length ? "var(--cream)" : "var(--text-muted)",
-                    border: "none",
-                    borderRadius: "8px"
-                  }}
-                >
+                <button onClick={handleCheckout} disabled={cart.length === 0 || placing} className="btn-checkout">
                   {placing ? "Placing order…" : "Checkout"}
                 </button>
               ) : (
                 cart.length > 0 && (
-                  <p style={{ fontSize: "12px", color: "var(--text-secondary)" }}>
-                    <Link to="/login" state={{ from: "/order" }} style={{ color: "var(--green)" }}>Log in</Link>
+                  <p className="login-prompt">
+                    <Link to="/login" state={{ from: "/order" }}>Log in</Link>
                     {" "}or{" "}
-                    <Link to="/signup" style={{ color: "var(--green)" }}>create an account</Link>
+                    <Link to="/signup">create an account</Link>
                     {" "}to check out — your cart stays right here.
                   </p>
                 )
@@ -480,6 +310,154 @@ export default function Order() {
           )}
         </aside>
       </div>
+
+      {/* Mobile sticky summary — tapping it scrolls straight down to the real cart panel below, so
+          checkout stays fully usable on mobile instead of needing a separate cart drawer. */}
+      {cartCount > 0 && !placedOrder && (
+        <button className="mobile-cart-bar" onClick={scrollToCart}>
+          <span className="mobile-cart-count">{cartCount} item{cartCount > 1 ? "s" : ""}</span>
+          <span className="mobile-cart-total">₹{total}</span>
+          <span className="mobile-cart-cta">View cart</span>
+        </button>
+      )}
+
+      <style>{`
+        .eyebrow { margin: 0 0 4px; font-size: 13px; color: var(--text-secondary); }
+        .page-title { font-size: 24px; margin-bottom: 20px; }
+
+        .specials-section { margin-bottom: 24px; }
+        .specials-heading { display: flex; align-items: baseline; gap: 8px; margin-bottom: 10px; }
+        .specials-heading h2 { font-size: 15px; margin: 0; }
+        .specials-heading span { font-size: 11.5px; color: var(--text-secondary); }
+        .specials-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 12px; }
+        .special-card {
+          position: relative; overflow: hidden; border: 1.5px solid var(--gold);
+          border-radius: var(--radius-lg); padding: 12px; background: var(--surface-1);
+        }
+        .special-ribbon {
+          position: absolute; top: 10px; right: -28px; background: var(--gold); color: var(--charcoal);
+          font-size: 9.5px; font-weight: 700; letter-spacing: 0.03em; padding: 3px 30px;
+          transform: rotate(35deg); text-transform: uppercase;
+        }
+        .special-photo { width: 100%; height: 68px; border-radius: 9px; margin-bottom: 9px; object-fit: cover; }
+        .special-photo-empty { background: var(--surface-2); }
+        .special-name { margin: 0; font-size: 13px; font-weight: 600; }
+        .special-desc { margin: 3px 0 0; font-size: 11.5px; color: var(--text-secondary); min-height: 30px; }
+        .special-footer { display: flex; justify-content: space-between; align-items: center; margin-top: 9px; }
+        .special-price { font-size: 13px; font-weight: 600; }
+        .btn-add-special {
+          padding: 5px 11px; font-size: 11px; border: 1px solid var(--border-strong); border-radius: 6px;
+          background: var(--surface-1); color: var(--text-primary);
+        }
+
+        .category-scroll {
+          display: flex; gap: 8px; overflow-x: auto; padding-bottom: 4px;
+          margin-bottom: 20px; -webkit-overflow-scrolling: touch;
+        }
+        .category-scroll::-webkit-scrollbar { display: none; }
+        .chip {
+          flex-shrink: 0; padding: 8px 16px; border-radius: 8px;
+          border: 1px solid var(--border); font-size: 13px;
+          background: var(--surface-1); color: var(--text-secondary);
+          white-space: nowrap;
+        }
+        .chip-active { background: var(--green); color: var(--cream); border-color: var(--green); }
+
+        .order-layout { display: block; }
+        @media (min-width: 860px) {
+          .order-layout { display: grid; grid-template-columns: 1.4fr 1fr; gap: 20px; align-items: start; }
+        }
+
+        .product-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+        @media (min-width: 520px) { .product-grid { grid-template-columns: repeat(3, 1fr); } }
+        @media (min-width: 860px) { .product-grid { grid-template-columns: 1fr 1fr; } }
+
+        .product-card {
+          background: var(--surface-1); border: 1px solid var(--border);
+          border-radius: var(--radius-lg); padding: 14px;
+        }
+        .product-card-out { opacity: 0.6; }
+        .product-photo { width: 100%; height: 70px; border-radius: 8px; margin-bottom: 10px; object-fit: cover; }
+        .product-photo-empty {
+          background: var(--surface-2); display: flex; align-items: center; justify-content: center; font-size: 22px;
+        }
+        .product-name { margin: 0; font-size: 13px; font-weight: 500; }
+        .product-desc { margin: 3px 0 10px; font-size: 12px; color: var(--text-secondary); }
+        .product-footer { display: flex; justify-content: space-between; align-items: center; }
+        .product-price { font-size: 13px; font-weight: 500; }
+        .sold-out { font-size: 12px; color: var(--red); }
+        .btn-add {
+          padding: 5px 12px; font-size: 12px; border: 1px solid var(--border-strong);
+          border-radius: 6px; background: var(--surface-1); color: var(--text-primary);
+        }
+
+        .empty-note { font-size: 13px; color: var(--text-secondary); padding: 8px 0; }
+
+        .cart-panel {
+          display: block; background: var(--surface-1); border: 1px solid var(--border);
+          border-radius: var(--radius); padding: 16px; margin-top: 20px; scroll-margin-top: 20px;
+        }
+        @media (min-width: 860px) {
+          .cart-panel { margin-top: 0; position: sticky; top: 20px; }
+        }
+        .section-title { font-size: 16px; margin-bottom: 10px; }
+
+        .cart-list { border: 1px solid var(--border); border-radius: var(--radius); padding: 4px 14px; margin-bottom: 14px; }
+        .cart-row { padding: 9px 0; border-bottom: 1px solid var(--border); font-size: 13px; }
+        .cart-row:last-child { border-bottom: none; }
+        .cart-row-main { display: flex; justify-content: space-between; }
+        .cart-row-note { margin: 3px 0 0; font-size: 11px; color: var(--text-secondary); }
+
+        .field-input {
+          width: 100%; padding: 8px 10px; font-size: 13px; border: 1px solid var(--border);
+          border-radius: 8px; margin-bottom: 10px; box-sizing: border-box; font-family: var(--font-body);
+        }
+        .field-label { font-size: 11px; color: var(--text-secondary); }
+
+        .cart-total-row { display: flex; justify-content: space-between; margin: 12px 0; }
+        .cart-total-label { font-size: 13px; color: var(--text-secondary); }
+        .cart-total-value { font-size: 16px; font-weight: 500; }
+
+        .checkout-error { font-size: 12px; color: var(--red); margin-bottom: 10px; }
+
+        .btn-checkout {
+          width: 100%; padding: 10px; font-size: 13px; border: none; border-radius: 8px;
+          background: var(--green); color: var(--cream); font-weight: 500; box-sizing: border-box;
+        }
+        .btn-checkout:disabled { background: var(--surface-2); color: var(--text-muted); }
+        .btn-secondary {
+          width: 100%; padding: 9px; font-size: 13px; background: var(--surface-2);
+          border: 1px solid var(--border-strong); border-radius: 8px;
+        }
+
+        .login-prompt { font-size: 12px; color: var(--text-secondary); }
+        .login-prompt a { color: var(--green); }
+
+        .placed-order-card { border: 1px solid var(--border); border-radius: var(--radius); padding: 14px; }
+        .placed-order-title { margin: 0 0 6px; font-size: 13px; font-weight: 500; }
+        .placed-order-meta { margin: 0 0 12px; font-size: 12px; color: var(--text-secondary); }
+
+        .custom-cake-form { border: 1px solid var(--border); border-radius: var(--radius-lg); padding: 16px; background: var(--surface-1); }
+        .custom-cake-title { margin: 0 0 4px; font-size: 13px; font-weight: 500; }
+        .custom-cake-rate { margin: 0 0 14px; font-size: 12px; color: var(--text-secondary); }
+        .custom-cake-footer { display: flex; justify-content: space-between; align-items: center; margin-top: 4px; }
+        .custom-cake-price { font-size: 13px; font-weight: 500; }
+        .btn-add-cake { padding: 8px 16px; font-size: 13px; background: var(--green); color: var(--cream); border: none; border-radius: 8px; }
+
+        .mobile-cart-bar {
+          position: fixed; bottom: calc(var(--tabbar-h) + 12px); left: 16px; right: 16px;
+          background: var(--green); color: var(--cream); border: none;
+          display: flex; align-items: center; justify-content: space-between; gap: 10px;
+          padding: 12px 16px; border-radius: var(--radius); z-index: 19;
+          box-shadow: 0 4px 16px rgba(0,0,0,0.2);
+        }
+        .mobile-cart-count { font-size: 12px; opacity: 0.85; }
+        .mobile-cart-total { font-size: 14px; font-weight: 600; }
+        .mobile-cart-cta { font-size: 12px; text-decoration: underline; }
+        @media (min-width: 860px) {
+          .mobile-cart-bar { display: none; }
+        }
+      `}</style>
     </div>
   );
 }

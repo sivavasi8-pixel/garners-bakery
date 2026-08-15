@@ -31,63 +31,81 @@ export default function MyOrders() {
   if (!orders) return <p style={{ padding: 28, color: "var(--text-secondary)" }}>Loading your orders…</p>;
 
   return (
-    <div style={{ padding: "28px", maxWidth: "1100px", margin: "0 auto" }}>
-      <h1 style={{ fontSize: "24px", marginBottom: "4px" }}>My orders</h1>
-      <p style={{ color: "var(--text-secondary)", fontSize: "14px", marginBottom: "24px" }}>
-        {orders.length} order{orders.length === 1 ? "" : "s"} placed.
-      </p>
+    <div className="page">
+      <p className="eyebrow">{orders.length} order{orders.length !== 1 ? "s" : ""} placed</p>
+      <h1 className="page-title">My orders</h1>
 
-      {orders.length === 0 ? (
-        <p style={{ fontSize: "13px", color: "var(--text-secondary)" }}>
-          No orders yet — <Link to="/order" style={{ color: "var(--green)" }}>browse the menu</Link> to place one.
-        </p>
-      ) : (
-        <div style={{ border: "1px solid var(--border)", borderRadius: "var(--radius)", overflow: "hidden" }}>
-          {orders.map((o, i) => (
-            <div
-              key={o.id}
-              style={{
-                display: "flex",
-                flexWrap: "wrap",
-                justifyContent: "space-between",
-                alignItems: "center",
-                padding: "12px 14px",
-                background: "var(--surface-1)",
-                borderBottom: i < orders.length - 1 ? "1px solid var(--border)" : "none",
-                gap: "10px"
-              }}
-            >
-              <div style={{ minWidth: 0, flex: "1 1 200px" }}>
-                <p style={{ margin: 0, fontSize: "13px" }}>
-                  #{o.id} · {new Date(o.createdAt).toLocaleDateString()}{" "}
-                  <Link to={`/receipt/${o.id}`} style={{ fontSize: "11px", color: "var(--green)" }}>receipt</Link>
-                </p>
-                <p style={{ margin: "3px 0 0", fontSize: "12px", color: "var(--text-secondary)" }}>
-                  {o.items.map((it) => `${it.name}${it.qty > 1 ? ` x${it.qty}` : ""}${it.note ? ` — "${it.note}"` : ""}`).join(", ")} · Pickup: {o.pickupTime}
-                </p>
-                <p style={{ margin: "2px 0 0", fontSize: "11px", color: o.paymentStatus === "paid" ? "#2c5c26" : "var(--red)" }}>
-                  {o.paymentStatus === "paid" ? "Paid" : "Pay on pickup"}{o.paymentMethod ? ` · ${o.paymentMethod}` : ""}
-                </p>
-              </div>
-              <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: "6px", flexShrink: 0 }}>
-                <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
-                  <span style={{ fontSize: "13px", fontWeight: 500 }}>₹{o.total}</span>
-                  <StatusBadge status={o.status} />
-                </div>
-                {o.status === "placed" && (
-                  <button
-                    onClick={() => handleCancel(o)}
-                    disabled={cancellingId === o.id}
-                    style={{ fontSize: "11px", border: "none", background: "none", color: "var(--red)", cursor: "pointer" }}
-                  >
-                    {cancellingId === o.id ? "Cancelling…" : "Cancel order"}
-                  </button>
-                )}
-              </div>
-            </div>
-          ))}
+      {orders.length === 0 && (
+        <div className="empty-state">
+          <span className="empty-icon" aria-hidden="true">🛍️</span>
+          <p>No orders yet — <Link to="/order">browse the menu</Link> to place your first one.</p>
         </div>
       )}
+
+      <div className="order-list">
+        {orders.map((o) => (
+          <div key={o.id} className="order-card">
+            <div className="order-card-main">
+              <div className="order-card-head">
+                <p className="order-id">
+                  #{o.id} · {new Date(o.createdAt).toLocaleDateString()}
+                </p>
+                <Link to={`/receipt/${o.id}`} className="receipt-link">receipt</Link>
+              </div>
+              <p className="order-items">
+                {o.items.map((it) => `${it.name}${it.qty > 1 ? ` x${it.qty}` : ""}${it.note ? ` — "${it.note}"` : ""}`).join(", ")}
+                {" · "}Pickup: {o.pickupTime}
+              </p>
+              <p className={`payment-line${o.paymentStatus === "paid" ? " payment-paid" : ""}`}>
+                {o.paymentStatus === "paid" ? "Paid" : "Pay on pickup"}{o.paymentMethod ? ` · ${o.paymentMethod}` : ""}
+              </p>
+              {o.status === "placed" && (
+                <button
+                  onClick={() => handleCancel(o)}
+                  disabled={cancellingId === o.id}
+                  className="cancel-link"
+                >
+                  {cancellingId === o.id ? "Cancelling…" : "Cancel order"}
+                </button>
+              )}
+            </div>
+            <div className="order-card-side">
+              <p className="order-total">₹{o.total}</p>
+              <StatusBadge status={o.status} />
+            </div>
+          </div>
+        ))}
+      </div>
+
+      <style>{`
+        .eyebrow { margin: 0 0 4px; font-size: 13px; color: var(--text-secondary); }
+        .page-title { font-size: 24px; margin-bottom: 20px; }
+
+        .empty-state { text-align: center; padding: 60px 20px; color: var(--text-secondary); }
+        .empty-icon { font-size: 32px; margin-bottom: 10px; display: block; }
+        .empty-state p { margin: 0; font-size: 14px; }
+        .empty-state a { color: var(--green); }
+
+        .order-list { display: flex; flex-direction: column; gap: 10px; }
+        .order-card {
+          background: var(--surface-1); border: 1px solid var(--border);
+          border-radius: var(--radius-lg); padding: 14px 16px;
+          display: flex; flex-wrap: wrap; justify-content: space-between; gap: 12px;
+        }
+        .order-card-main { flex: 1 1 220px; min-width: 0; }
+        .order-card-head { display: flex; align-items: center; gap: 8px; margin-bottom: 4px; flex-wrap: wrap; }
+        .order-id { margin: 0; font-size: 13px; font-weight: 500; }
+        .receipt-link { font-size: 12px; color: var(--gold); text-decoration: underline; }
+        .order-items { margin: 0 0 4px; font-size: 12px; color: var(--text-secondary); }
+        .payment-line { margin: 0 0 8px; font-size: 11px; color: var(--red); }
+        .payment-paid { color: #2c5c26; }
+        .cancel-link {
+          background: none; border: none; padding: 0; font-size: 12px;
+          color: var(--red); text-decoration: underline; cursor: pointer;
+        }
+        .order-card-side { display: flex; flex-direction: column; align-items: flex-end; gap: 6px; flex-shrink: 0; }
+        .order-total { margin: 0; font-size: 15px; font-weight: 500; }
+      `}</style>
     </div>
   );
 }

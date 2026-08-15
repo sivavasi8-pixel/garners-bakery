@@ -1,7 +1,11 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { api } from "../api";
+import { AdminPage } from "../components/admin/AdminUI";
 
+// Deliberately excludes "custom" (made-to-order, needs the full design form on
+// the Order page) and "special" (one-off Today's Specials) — walk-in sales
+// only ring up the regular stocked categories.
 const categories = [
   { id: "breads", label: "Breads" },
   { id: "cookies", label: "Cookies" },
@@ -14,7 +18,7 @@ const paymentOptions = [
   { id: "card", label: "Card" }
 ];
 
-export default function POS() {
+export default function AdminPos() {
   const [menu, setMenu] = useState(null);
   const [activeCategory, setActiveCategory] = useState("breads");
   const [cart, setCart] = useState([]);
@@ -28,7 +32,8 @@ export default function POS() {
     api.getMenu().then((d) => setMenu(d.items)).catch((e) => setError(e.message));
   }, []);
 
-  const addToCart = (item) => {
+  const addToSale = (item) => {
+    if (!item.inStock) return;
     setCart((prev) => {
       const existing = prev.find((c) => c.id === item.id);
       if (existing) return prev.map((c) => (c.id === item.id ? { ...c, qty: c.qty + 1 } : c));
@@ -36,7 +41,7 @@ export default function POS() {
     });
   };
 
-  const removeFromCart = (id) => setCart((prev) => prev.filter((c) => c.id !== id));
+  const removeFromSale = (id) => setCart((prev) => prev.filter((c) => c.id !== id));
 
   const toggleAvailability = async (item) => {
     try {
@@ -73,219 +78,121 @@ export default function POS() {
     }
   };
 
-  if (error && !menu) return <p style={{ padding: 28, color: "var(--red)" }}>Couldn't load menu: {error}</p>;
-  if (!menu) return <p style={{ padding: 28, color: "var(--text-secondary)" }}>Loading menu…</p>;
+  if (error && !menu) return <AdminPage title="POS"><p style={{ color: "var(--a-danger-text)" }}>Couldn't load menu: {error}</p></AdminPage>;
+  if (!menu) return <AdminPage title="POS"><p style={{ color: "var(--a-text-secondary)" }}>Loading…</p></AdminPage>;
 
   const shown = menu.filter((m) => m.category === activeCategory && m.price);
 
   return (
-    <div style={{ padding: "28px", maxWidth: "1100px", margin: "0 auto" }}>
-      <h1 style={{ fontSize: "24px", marginBottom: "4px" }}>POS — quick order</h1>
-      <p style={{ color: "var(--text-secondary)", fontSize: "14px", marginBottom: "20px" }}>
-        Ring up a walk-in sale.
-      </p>
-
-      <div style={{ display: "flex", gap: "8px", marginBottom: "20px", flexWrap: "wrap" }}>
+    <AdminPage eyebrow="Ring up a walk-in sale" title="POS — quick order">
+      <div style={{ display: "flex", gap: 8, marginBottom: 16, flexWrap: "wrap" }}>
         {categories.map((c) => (
           <button
             key={c.id}
+            className={`admin-cat-btn${activeCategory === c.id ? " active" : ""}`}
             onClick={() => setActiveCategory(c.id)}
-            style={{
-              padding: "7px 16px",
-              borderRadius: "8px",
-              border: "1px solid var(--border)",
-              fontSize: "13px",
-              background: activeCategory === c.id ? "var(--green)" : "var(--surface-1)",
-              color: activeCategory === c.id ? "var(--cream)" : "var(--text-secondary)"
-            }}
           >
             {c.label}
           </button>
         ))}
       </div>
 
-      <div className="split-2col" style={{ display: "grid", gridTemplateColumns: "1.4fr 1fr", gap: "20px" }}>
-        <div className="split-2col" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "12px", alignContent: "start" }}>
+      <div className="admin-two-col">
+        <div className="admin-pos-grid">
           {shown.map((item) => (
-            <div
-              key={item.id}
-              style={{
-                position: "relative",
-                border: "1px solid var(--border)",
-                borderRadius: "var(--radius-lg)",
-                padding: "14px",
-                background: "var(--surface-1)",
-                opacity: item.inStock ? 1 : 0.6
-              }}
-            >
-              <button
-                onClick={() => (item.inStock ? addToCart(item) : null)}
-                disabled={!item.inStock}
-                style={{
-                  all: "unset",
-                  display: "block",
-                  width: "100%",
-                  cursor: item.inStock ? "pointer" : "default",
-                  boxSizing: "border-box"
-                }}
-              >
-                <p style={{ margin: 0, fontSize: "13px", fontWeight: 500 }}>{item.name}</p>
-                <p style={{ margin: "3px 0 0", fontSize: "13px", color: "var(--text-secondary)" }}>
+            <div key={item.id} className={`admin-pos-item${!item.inStock ? " out" : ""}`}>
+              <button onClick={() => addToSale(item)} disabled={!item.inStock} className="admin-pos-item-btn">
+                <p style={{ margin: 0, fontSize: 13 }}>{item.name}</p>
+                <p style={{ margin: "3px 0 0", fontSize: 12, color: "var(--a-text-secondary)" }}>
                   {item.inStock ? `₹${item.price}` : "Sold out"}
                 </p>
               </button>
-              <button
-                onClick={() => toggleAvailability(item)}
-                style={{
-                  marginTop: "6px",
-                  fontSize: "10px",
-                  border: "none",
-                  background: "none",
-                  color: "var(--green)",
-                  cursor: "pointer",
-                  padding: 0
-                }}
-              >
+              <button onClick={() => toggleAvailability(item)} className="admin-link-btn">
                 {item.inStock ? "mark sold out" : "mark available"}
               </button>
             </div>
           ))}
+          {shown.length === 0 && <p style={{ fontSize: 13, color: "var(--a-text-secondary)" }}>Nothing in this category.</p>}
         </div>
 
-        <aside>
-          <h2 style={{ fontSize: "16px", marginBottom: "10px" }}>Current sale</h2>
+        <div className="admin-form-panel">
+          <p className="admin-section-title">Current sale</p>
 
           {placedOrder ? (
-            <div style={{ border: "1px solid var(--border)", borderRadius: "var(--radius)", padding: "14px" }}>
-              <p style={{ margin: "0 0 6px", fontSize: "13px", fontWeight: 500 }}>
+            <div>
+              <p style={{ margin: "0 0 6px", fontSize: 13, fontWeight: 500 }}>
                 Order #{placedOrder.id} rung up — ₹{placedOrder.total}
               </p>
-              <Link
-                to={`/receipt/${placedOrder.id}`}
-                style={{
-                  display: "block",
-                  textAlign: "center",
-                  width: "100%",
-                  padding: "9px",
-                  fontSize: "13px",
-                  background: "var(--green)",
-                  color: "var(--cream)",
-                  borderRadius: "8px",
-                  textDecoration: "none",
-                  boxSizing: "border-box",
-                  marginBottom: "8px"
-                }}
-              >
+              <Link to={`/receipt/${placedOrder.id}`} className="admin-btn-primary" style={{ display: "block", textAlign: "center", textDecoration: "none", marginBottom: 8, boxSizing: "border-box" }}>
                 Print receipt
               </Link>
-              <button
-                onClick={() => setPlacedOrder(null)}
-                style={{
-                  width: "100%",
-                  padding: "9px",
-                  fontSize: "13px",
-                  background: "var(--surface-2)",
-                  border: "1px solid var(--border-strong)",
-                  borderRadius: "8px"
-                }}
-              >
-                Start next sale
-              </button>
+              <button onClick={() => setPlacedOrder(null)} className="admin-btn-secondary">Start next sale</button>
             </div>
           ) : (
             <>
               <input
-                type="text"
+                className="admin-search"
                 placeholder="Customer name (optional)"
                 value={customerName}
                 onChange={(e) => setCustomerName(e.target.value)}
-                style={{
-                  width: "100%",
-                  padding: "8px 10px",
-                  fontSize: "13px",
-                  border: "1px solid var(--border)",
-                  borderRadius: "8px",
-                  marginBottom: "12px",
-                  boxSizing: "border-box"
-                }}
+                style={{ marginBottom: 10 }}
               />
-
-              <div style={{ border: "1px solid var(--border)", borderRadius: "var(--radius)", padding: "4px 14px", marginBottom: "14px" }}>
-                {cart.length === 0 && (
-                  <p style={{ fontSize: "13px", color: "var(--text-secondary)", padding: "12px 0" }}>
-                    Tap items to add them.
-                  </p>
-                )}
-                {cart.map((c, i) => (
-                  <div
-                    key={c.id}
-                    style={{
-                      display: "flex",
-                      justifyContent: "space-between",
-                      alignItems: "center",
-                      padding: "9px 0",
-                      borderBottom: i < cart.length - 1 ? "1px solid var(--border)" : "none",
-                      fontSize: "13px"
-                    }}
-                  >
-                    <span>{c.name} x{c.qty}</span>
-                    <span style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-                      ₹{c.price * c.qty}
-                      <button
-                        onClick={() => removeFromCart(c.id)}
-                        style={{ border: "none", background: "none", color: "var(--red)", cursor: "pointer", fontSize: "12px" }}
-                      >
-                        ✕
-                      </button>
+              <div className="admin-sale-list">
+                {cart.length === 0 && <p style={{ fontSize: 12, color: "var(--a-text-muted)", margin: 0 }}>Tap items to add them.</p>}
+                {cart.map((s) => (
+                  <div key={s.id} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", fontSize: 12, padding: "4px 0" }}>
+                    <span>{s.name} x{s.qty}</span>
+                    <span style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                      ₹{s.price * s.qty}
+                      <button onClick={() => removeFromSale(s.id)} className="admin-link-btn danger">✕</button>
                     </span>
                   </div>
                 ))}
               </div>
-
               <select
+                className="admin-search"
                 value={paymentMethod}
                 onChange={(e) => setPaymentMethod(e.target.value)}
-                style={{
-                  width: "100%",
-                  padding: "8px 10px",
-                  fontSize: "13px",
-                  border: "1px solid var(--border)",
-                  borderRadius: "8px",
-                  marginBottom: "12px",
-                  boxSizing: "border-box"
-                }}
+                style={{ margin: "10px 0" }}
               >
-                {paymentOptions.map((p) => (
-                  <option key={p.id} value={p.id}>{p.label}</option>
-                ))}
+                {paymentOptions.map((p) => <option key={p.id} value={p.id}>{p.label}</option>)}
               </select>
-
-              <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "12px" }}>
-                <span style={{ fontSize: "13px", color: "var(--text-secondary)" }}>Total</span>
-                <span style={{ fontSize: "16px", fontWeight: 500 }}>₹{total}</span>
+              <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 10 }}>
+                <span style={{ color: "var(--a-text-secondary)" }}>Total</span>
+                <span style={{ fontSize: 16, fontWeight: 500 }}>₹{total}</span>
               </div>
-
-              {error && <p style={{ fontSize: "12px", color: "var(--red)", marginBottom: "10px" }}>{error}</p>}
-
-              <button
-                onClick={handleCharge}
-                disabled={cart.length === 0 || placing}
-                style={{
-                  width: "100%",
-                  padding: "10px",
-                  fontSize: "13px",
-                  background: cart.length ? "var(--green)" : "var(--surface-2)",
-                  color: cart.length ? "var(--cream)" : "var(--text-muted)",
-                  border: "none",
-                  borderRadius: "8px"
-                }}
-              >
-                {placing ? "Charging…" : "Charge & ring up"}
+              {error && <p style={{ fontSize: 12, color: "var(--a-danger-text)", marginBottom: 10 }}>{error}</p>}
+              <button className="admin-btn-primary" disabled={cart.length === 0 || placing} onClick={handleCharge}>
+                {placing ? "Charging…" : "Charge and ring up"}
               </button>
             </>
           )}
-        </aside>
+        </div>
       </div>
-    </div>
+
+      <style>{`
+        .admin-section-title { font-size: 14px; font-weight: 500; margin-bottom: 10px; }
+        .admin-two-col { display: grid; grid-template-columns: 1fr; gap: 18px; }
+        @media (min-width: 900px) { .admin-two-col { grid-template-columns: 1.5fr 1fr; } }
+        .admin-cat-btn { border: 1px solid var(--a-border); background: var(--a-panel); border-radius: 6px; padding: 6px 14px; font-size: 12px; }
+        .admin-cat-btn.active { background: var(--a-green); color: #fff; border-color: var(--a-green); }
+        .admin-pos-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; align-content: start; }
+        .admin-pos-item { background: var(--a-panel); border: 1px solid var(--a-border); border-radius: var(--a-radius); padding: 14px; }
+        .admin-pos-item.out { opacity: 0.6; }
+        .admin-pos-item-btn {
+          all: unset; display: block; width: 100%; cursor: pointer; box-sizing: border-box; margin-bottom: 6px;
+        }
+        .admin-pos-item.out .admin-pos-item-btn { cursor: default; }
+        .admin-pos-item:hover:not(.out) { border-color: var(--a-accent); }
+        .admin-link-btn { border: none; background: none; color: var(--a-green); cursor: pointer; font-size: 10px; padding: 0; }
+        .admin-link-btn.danger { color: var(--a-danger-text); font-size: 12px; }
+        .admin-search { width: 100%; border: 1px solid var(--a-border); border-radius: 6px; padding: 8px 12px; font-size: 13px; box-sizing: border-box; }
+        .admin-form-panel { background: var(--a-panel); border: 1px solid var(--a-border); border-radius: var(--a-radius); padding: 16px; }
+        .admin-sale-list { min-height: 40px; border: 1px solid var(--a-border); border-radius: 6px; padding: 10px; }
+        .admin-btn-primary { width: 100%; padding: 10px; background: var(--a-green); color: #fff; border: none; border-radius: 6px; font-size: 13px; }
+        .admin-btn-primary:disabled { background: var(--a-border); color: var(--a-text-muted); }
+        .admin-btn-secondary { width: 100%; padding: 10px; background: var(--a-bg); border: 1px solid var(--a-border); border-radius: 6px; font-size: 13px; }
+      `}</style>
+    </AdminPage>
   );
 }

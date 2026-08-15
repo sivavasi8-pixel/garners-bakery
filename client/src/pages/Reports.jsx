@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { api } from "../api";
-import MetricCard from "../components/MetricCard";
+import { AdminPage, StatGrid, StatCard, ListPanel } from "../components/admin/AdminUI";
 
 const dayLabel = (isoDate) => {
   const d = new Date(`${isoDate}T00:00:00`);
@@ -18,37 +18,16 @@ function RevenueChart({ days }) {
 
   return (
     <div>
-      <p style={{ margin: "0 0 14px", fontSize: "13px", color: "var(--text-secondary)" }}>
+      <p style={{ margin: "0 0 14px", fontSize: 13, color: "var(--a-text-secondary)" }}>
         ₹{weekTotal.toLocaleString()} total this week
       </p>
 
-      {/* Single series (revenue) — no legend needed; the section title names what's plotted. */}
       <div style={{ position: "relative" }}>
-        {/* max-value gridline */}
-        <div
-          style={{
-            position: "absolute",
-            left: 0,
-            right: 0,
-            top: 0,
-            borderTop: "1px solid var(--border)",
-            fontSize: "11px",
-            color: "var(--text-muted)"
-          }}
-        >
+        <div style={{ position: "absolute", left: 0, right: 0, top: 0, borderTop: "1px solid var(--a-border)", fontSize: 11, color: "var(--a-text-muted)" }}>
           <span style={{ position: "relative", top: "-16px" }}>₹{maxRevenue.toLocaleString()}</span>
         </div>
 
-        <div
-          style={{
-            display: "flex",
-            alignItems: "flex-end",
-            gap: "10px",
-            height: BAR_MAX_HEIGHT,
-            borderBottom: "1px solid var(--border-strong)",
-            paddingTop: "18px"
-          }}
-        >
+        <div style={{ display: "flex", alignItems: "flex-end", gap: 10, height: BAR_MAX_HEIGHT, borderBottom: "1px solid var(--a-border)", paddingTop: 18 }}>
           {days.map((d, i) => {
             const h = Math.max((d.revenue / maxRevenue) * BAR_MAX_HEIGHT, d.revenue > 0 ? 3 : 1);
             return (
@@ -56,60 +35,32 @@ function RevenueChart({ days }) {
                 key={d.date}
                 style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", position: "relative" }}
                 onMouseEnter={() => setHovered(i)}
-                onMouseLeave={() => setHovered((h) => (h === i ? null : h))}
+                onMouseLeave={() => setHovered((h2) => (h2 === i ? null : h2))}
               >
                 {hovered === i && (
-                  <div
-                    style={{
-                      position: "absolute",
-                      bottom: h + 8,
-                      background: "var(--charcoal)",
-                      color: "var(--cream)",
-                      fontSize: "11px",
-                      padding: "4px 8px",
-                      borderRadius: "6px",
-                      whiteSpace: "nowrap",
-                      zIndex: 1
-                    }}
-                  >
+                  <div style={{ position: "absolute", bottom: h + 8, background: "var(--a-ink)", color: "#fff", fontSize: 11, padding: "4px 8px", borderRadius: 6, whiteSpace: "nowrap", zIndex: 1 }}>
                     ₹{d.revenue.toLocaleString()} · {d.orders} order{d.orders === 1 ? "" : "s"}
                   </div>
                 )}
                 {i === peakIndex && d.revenue > 0 && (
-                  <span style={{ fontSize: "11px", fontWeight: 500, marginBottom: "4px" }}>
-                    ₹{d.revenue.toLocaleString()}
-                  </span>
+                  <span style={{ fontSize: 11, fontWeight: 500, marginBottom: 4 }}>₹{d.revenue.toLocaleString()}</span>
                 )}
-                <div
-                  style={{
-                    width: "24px",
-                    maxWidth: "60%",
-                    height: h,
-                    background: "var(--green)",
-                    borderRadius: "4px 4px 0 0"
-                  }}
-                />
+                <div style={{ width: 24, maxWidth: "60%", height: h, background: "var(--a-green)", borderRadius: "4px 4px 0 0" }} />
               </div>
             );
           })}
         </div>
 
-        <div style={{ display: "flex", gap: "10px", marginTop: "6px" }}>
+        <div style={{ display: "flex", gap: 10, marginTop: 6 }}>
           {days.map((d) => (
-            <span
-              key={d.date}
-              style={{ flex: 1, textAlign: "center", fontSize: "11px", color: "var(--text-muted)" }}
-            >
-              {dayLabel(d.date)}
-            </span>
+            <span key={d.date} style={{ flex: 1, textAlign: "center", fontSize: 11, color: "var(--a-text-muted)" }}>{dayLabel(d.date)}</span>
           ))}
         </div>
       </div>
 
-      {/* Table view of the same data — keeps every number available without relying on hover. */}
-      <table style={{ width: "100%", borderCollapse: "collapse", marginTop: "20px", fontSize: "12px" }}>
+      <table style={{ width: "100%", borderCollapse: "collapse", marginTop: 20, fontSize: 12 }}>
         <thead>
-          <tr style={{ color: "var(--text-secondary)", textAlign: "left" }}>
+          <tr style={{ color: "var(--a-text-secondary)", textAlign: "left" }}>
             <th style={{ fontWeight: 500, padding: "4px 0" }}>Day</th>
             <th style={{ fontWeight: 500, padding: "4px 0", textAlign: "right" }}>Orders</th>
             <th style={{ fontWeight: 500, padding: "4px 0", textAlign: "right" }}>Revenue</th>
@@ -117,12 +68,10 @@ function RevenueChart({ days }) {
         </thead>
         <tbody>
           {days.map((d) => (
-            <tr key={d.date} style={{ borderTop: "1px solid var(--border)" }}>
+            <tr key={d.date} style={{ borderTop: "1px solid var(--a-border)" }}>
               <td style={{ padding: "5px 0" }}>{dayLabel(d.date)}</td>
               <td style={{ padding: "5px 0", textAlign: "right" }}>{d.orders}</td>
-              <td style={{ padding: "5px 0", textAlign: "right", fontVariantNumeric: "tabular-nums" }}>
-                ₹{d.revenue.toLocaleString()}
-              </td>
+              <td style={{ padding: "5px 0", textAlign: "right", fontVariantNumeric: "tabular-nums" }}>₹{d.revenue.toLocaleString()}</td>
             </tr>
           ))}
         </tbody>
@@ -132,28 +81,19 @@ function RevenueChart({ days }) {
 }
 
 function BestSellers({ items }) {
-  if (items.length === 0) {
-    return <p style={{ fontSize: "13px", color: "var(--text-secondary)" }}>No orders yet.</p>;
-  }
+  if (items.length === 0) return <p style={{ fontSize: 13, color: "var(--a-text-secondary)" }}>No orders yet.</p>;
   const maxQty = Math.max(...items.map((i) => i.qty));
 
   return (
     <div>
       {items.map((item) => (
-        <div key={item.name} style={{ marginBottom: "12px" }}>
-          <div style={{ display: "flex", justifyContent: "space-between", fontSize: "12px", marginBottom: "4px" }}>
+        <div key={item.name} style={{ marginBottom: 12 }}>
+          <div style={{ display: "flex", justifyContent: "space-between", fontSize: 12, marginBottom: 4 }}>
             <span>{item.name}</span>
-            <span style={{ color: "var(--text-secondary)", fontVariantNumeric: "tabular-nums" }}>{item.qty}</span>
+            <span style={{ color: "var(--a-text-secondary)", fontVariantNumeric: "tabular-nums" }}>{item.qty}</span>
           </div>
-          <div style={{ background: "var(--surface-2)", borderRadius: "4px", height: "10px" }}>
-            <div
-              style={{
-                width: `${(item.qty / maxQty) * 100}%`,
-                height: "100%",
-                background: "var(--kraft)",
-                borderRadius: "4px"
-              }}
-            />
+          <div style={{ background: "var(--a-bg)", borderRadius: 4, height: 10 }}>
+            <div style={{ width: `${(item.qty / maxQty) * 100}%`, height: "100%", background: "var(--a-accent)", borderRadius: 4 }} />
           </div>
         </div>
       ))}
@@ -196,60 +136,30 @@ function ExpensesPanel({ expenses, onChanged }) {
 
   return (
     <div>
-      <form onSubmit={handleSubmit} style={{ display: "flex", gap: "8px", marginBottom: "14px", flexWrap: "wrap" }} className="no-print">
-        <input
-          type="text"
-          placeholder="Description"
-          value={form.description}
-          onChange={(e) => setForm({ ...form, description: e.target.value })}
-          style={{ flex: 2, minWidth: "120px", padding: "7px 9px", fontSize: "12px", border: "1px solid var(--border)", borderRadius: "6px" }}
-        />
-        <input
-          type="number"
-          step="0.01"
-          placeholder="Amount"
-          value={form.amount}
-          onChange={(e) => setForm({ ...form, amount: e.target.value })}
-          style={{ width: "90px", padding: "7px 9px", fontSize: "12px", border: "1px solid var(--border)", borderRadius: "6px" }}
-        />
-        <select
-          value={form.category}
-          onChange={(e) => setForm({ ...form, category: e.target.value })}
-          style={{ padding: "7px 9px", fontSize: "12px", border: "1px solid var(--border)", borderRadius: "6px" }}
-        >
-          {expenseCategories.map((c) => (
-            <option key={c} value={c}>{c}</option>
-          ))}
+      <form onSubmit={handleSubmit} className="no-print admin-expense-form">
+        <input className="admin-search" placeholder="Description" value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} style={{ flex: 2, minWidth: 120 }} />
+        <input type="number" step="0.01" className="admin-search" placeholder="Amount" value={form.amount} onChange={(e) => setForm({ ...form, amount: e.target.value })} style={{ width: 90 }} />
+        <select className="admin-search" value={form.category} onChange={(e) => setForm({ ...form, category: e.target.value })}>
+          {expenseCategories.map((c) => <option key={c} value={c}>{c}</option>)}
         </select>
-        <button
-          type="submit"
-          disabled={saving}
-          style={{ padding: "7px 14px", fontSize: "12px", background: "var(--green)", color: "var(--cream)", border: "none", borderRadius: "6px" }}
-        >
-          Add
-        </button>
+        <button type="submit" disabled={saving} className="admin-btn-primary" style={{ width: "auto", padding: "7px 14px" }}>Add</button>
       </form>
 
-      {formError && <p style={{ fontSize: "12px", color: "var(--red)", marginBottom: "10px" }}>{formError}</p>}
+      {formError && <p style={{ fontSize: 12, color: "var(--a-danger-text)", marginBottom: 10 }}>{formError}</p>}
 
       {expenses.length === 0 ? (
-        <p style={{ fontSize: "13px", color: "var(--text-secondary)" }}>No expenses logged yet.</p>
+        <p style={{ fontSize: 13, color: "var(--a-text-secondary)" }}>No expenses logged yet.</p>
       ) : (
-        <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "12px" }}>
+        <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12 }}>
           <tbody>
             {expenses.map((e) => (
-              <tr key={e.id} style={{ borderTop: "1px solid var(--border)" }}>
+              <tr key={e.id} style={{ borderTop: "1px solid var(--a-border)" }}>
                 <td style={{ padding: "6px 0" }}>{e.description}</td>
-                <td style={{ padding: "6px 0", color: "var(--text-secondary)" }}>{e.category}</td>
-                <td style={{ padding: "6px 0", color: "var(--text-secondary)" }}>{e.incurredAt}</td>
+                <td style={{ padding: "6px 0", color: "var(--a-text-secondary)" }}>{e.category}</td>
+                <td style={{ padding: "6px 0", color: "var(--a-text-secondary)" }}>{e.incurredAt}</td>
                 <td style={{ padding: "6px 0", textAlign: "right", fontVariantNumeric: "tabular-nums" }}>₹{e.amount.toLocaleString()}</td>
                 <td style={{ padding: "6px 0 6px 8px", textAlign: "right" }} className="no-print">
-                  <button
-                    onClick={() => handleDelete(e.id)}
-                    style={{ border: "none", background: "none", color: "var(--red)", cursor: "pointer", fontSize: "11px" }}
-                  >
-                    remove
-                  </button>
+                  <button onClick={() => handleDelete(e.id)} className="admin-link-btn danger">remove</button>
                 </td>
               </tr>
             ))}
@@ -260,7 +170,7 @@ function ExpensesPanel({ expenses, onChanged }) {
   );
 }
 
-export default function Reports() {
+export default function AdminReports() {
   const [data, setData] = useState(null);
   const [error, setError] = useState(null);
 
@@ -270,8 +180,8 @@ export default function Reports() {
     load();
   }, []);
 
-  if (error) return <p style={{ padding: 28, color: "var(--red)" }}>Couldn't load reports: {error}</p>;
-  if (!data) return <p style={{ padding: 28, color: "var(--text-secondary)" }}>Loading reports…</p>;
+  if (error) return <AdminPage title="Reports"><p style={{ color: "var(--a-danger-text)" }}>Couldn't load reports: {error}</p></AdminPage>;
+  if (!data) return <AdminPage title="Reports"><p style={{ color: "var(--a-text-secondary)" }}>Loading…</p></AdminPage>;
 
   const exportCSV = () => {
     const lines = ["Day,Orders,Revenue"];
@@ -281,9 +191,7 @@ export default function Reports() {
     data.bestSellers.forEach((i) => lines.push(`"${i.name.replace(/"/g, '""')}",${i.qty}`));
     lines.push("");
     lines.push("Expense,Category,Date,Amount");
-    data.recentExpenses.forEach((e) =>
-      lines.push(`"${e.description.replace(/"/g, '""')}",${e.category},${e.incurredAt},${e.amount}`)
-    );
+    data.recentExpenses.forEach((e) => lines.push(`"${e.description.replace(/"/g, '""')}",${e.category},${e.incurredAt},${e.amount}`));
     lines.push("");
     lines.push(`All-time revenue,${data.allTimeRevenue}`);
     lines.push(`All-time expenses,${data.allTimeExpenses}`);
@@ -301,70 +209,55 @@ export default function Reports() {
   };
 
   return (
-    <div style={{ padding: "28px", maxWidth: "1100px", margin: "0 auto" }}>
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", flexWrap: "wrap", gap: "12px" }}>
-        <div>
-          <h1 style={{ fontSize: "24px", marginBottom: "4px" }}>Reports</h1>
-          <p style={{ color: "var(--text-secondary)", fontSize: "14px", marginBottom: "24px" }}>
-            Revenue and top sellers, all-time and this week.
-          </p>
-        </div>
-        {/* Excel opens CSV directly; "Print" uses the browser's own Save-as-PDF — no extra library needed. */}
-        <div className="no-print" style={{ display: "flex", gap: "8px" }}>
-          <button
-            onClick={exportCSV}
-            style={{ padding: "7px 14px", fontSize: "12px", border: "1px solid var(--border-strong)", borderRadius: "8px", background: "var(--surface-1)" }}
-          >
-            Export CSV
-          </button>
-          <button
-            onClick={() => window.print()}
-            style={{ padding: "7px 14px", fontSize: "12px", border: "1px solid var(--border-strong)", borderRadius: "8px", background: "var(--surface-1)" }}
-          >
-            Print / Save as PDF
-          </button>
-        </div>
-      </div>
+    <AdminPage
+      eyebrow="Revenue and top sellers, all-time and this week"
+      title="Reports"
+      actions={
+        <>
+          <button onClick={exportCSV} className="admin-btn-sm">Export CSV</button>
+          <button onClick={() => window.print()} className="admin-btn-sm">Print / Save as PDF</button>
+        </>
+      }
+    >
+      <StatGrid columns={3}>
+        <StatCard label="All-time revenue" value={`₹${data.allTimeRevenue.toLocaleString()}`} />
+        <StatCard label="All-time expenses" value={`₹${data.allTimeExpenses.toLocaleString()}`} />
+        <StatCard label="All-time profit" value={`₹${data.allTimeProfit.toLocaleString()}`} warn={data.allTimeProfit < 0} />
+        <StatCard label="All-time orders" value={data.allTimeOrders} />
+        <StatCard label="Placed" value={data.ordersByStatus.placed || 0} />
+        <StatCard label="Delivered" value={data.ordersByStatus.delivered || 0} />
+      </StatGrid>
 
-      <div
-        style={{
-          display: "grid",
-          gridTemplateColumns: "repeat(auto-fit, minmax(160px, 1fr))",
-          gap: "14px",
-          marginBottom: "28px"
-        }}
-      >
-        <MetricCard label="All-time revenue" value={`₹${data.allTimeRevenue.toLocaleString()}`} />
-        <MetricCard label="All-time expenses" value={`₹${data.allTimeExpenses.toLocaleString()}`} />
-        <MetricCard
-          label="All-time profit"
-          value={`₹${data.allTimeProfit.toLocaleString()}`}
-          tone={data.allTimeProfit < 0 ? "warning" : "default"}
-        />
-        <MetricCard label="All-time orders" value={data.allTimeOrders} />
-        <MetricCard label="Placed" value={data.ordersByStatus.placed || 0} />
-        <MetricCard label="Delivered" value={data.ordersByStatus.delivered || 0} />
-      </div>
-
-      <div className="split-2col" style={{ display: "grid", gridTemplateColumns: "1.4fr 1fr", gap: "20px", marginBottom: "20px" }}>
-        <section style={{ border: "1px solid var(--border)", borderRadius: "var(--radius)", padding: "18px" }}>
-          <h2 style={{ fontSize: "16px", marginBottom: "10px" }}>Revenue, last 7 days</h2>
+      <div className="admin-two-col" style={{ marginBottom: 18 }}>
+        <div className="admin-form-panel">
+          <p className="admin-section-title">Revenue, last 7 days</p>
           <RevenueChart days={data.last7Days} />
-        </section>
-
-        <section style={{ border: "1px solid var(--border)", borderRadius: "var(--radius)", padding: "18px" }}>
-          <h2 style={{ fontSize: "16px", marginBottom: "14px" }}>Best sellers</h2>
+        </div>
+        <div className="admin-form-panel">
+          <p className="admin-section-title">Best sellers</p>
           <BestSellers items={data.bestSellers} />
-        </section>
+        </div>
       </div>
 
-      <section style={{ border: "1px solid var(--border)", borderRadius: "var(--radius)", padding: "18px" }}>
-        <h2 style={{ fontSize: "16px", marginBottom: "4px" }}>Expenses</h2>
-        <p style={{ fontSize: "12px", color: "var(--text-secondary)", marginBottom: "14px" }}>
+      <div className="admin-form-panel">
+        <p className="admin-section-title" style={{ marginBottom: 4 }}>Expenses</p>
+        <p style={{ fontSize: 12, color: "var(--a-text-secondary)", marginBottom: 14 }}>
           This week: ₹{data.expensesLast7Days.toLocaleString()} spent, ₹{data.profitLast7Days.toLocaleString()} profit.
         </p>
         <ExpensesPanel expenses={data.recentExpenses} onChanged={load} />
-      </section>
-    </div>
+      </div>
+
+      <style>{`
+        .admin-section-title { font-size: 14px; font-weight: 500; margin-bottom: 10px; }
+        .admin-two-col { display: grid; grid-template-columns: 1fr; gap: 18px; }
+        @media (min-width: 900px) { .admin-two-col { grid-template-columns: 1.4fr 1fr; } }
+        .admin-form-panel { background: var(--a-panel); border: 1px solid var(--a-border); border-radius: var(--a-radius); padding: 18px; }
+        .admin-btn-sm { border: 1px solid var(--a-border); background: var(--a-panel); border-radius: 6px; padding: 6px 12px; font-size: 12px; }
+        .admin-btn-primary { background: var(--a-green); color: #fff; border: none; border-radius: 6px; font-size: 13px; }
+        .admin-search { border: 1px solid var(--a-border); border-radius: 6px; padding: 7px 9px; font-size: 12px; box-sizing: border-box; }
+        .admin-expense-form { display: flex; gap: 8px; margin-bottom: 14px; flex-wrap: wrap; }
+        .admin-link-btn { border: none; background: none; color: var(--a-danger-text); cursor: pointer; font-size: 11px; padding: 0; }
+      `}</style>
+    </AdminPage>
   );
 }

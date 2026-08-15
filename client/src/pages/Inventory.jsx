@@ -1,22 +1,11 @@
 import { useEffect, useState } from "react";
 import { api } from "../api";
 import { useAuth } from "../auth/AuthContext";
-import MetricCard from "../components/MetricCard";
-import StatusBadge from "../components/StatusBadge";
+import { AdminPage, StatGrid, StatCard, StatusPill, ListPanel, ListRow } from "../components/admin/AdminUI";
 
 const emptyForm = { name: "", unit: "", quantity: "", reorderLevel: "", supplier: "" };
 
-const inputStyle = {
-  width: "100%",
-  padding: "8px 10px",
-  fontSize: "13px",
-  border: "1px solid var(--border)",
-  borderRadius: "8px",
-  marginBottom: "10px",
-  boxSizing: "border-box"
-};
-
-export default function Inventory() {
+export default function AdminInventory() {
   const [items, setItems] = useState(null);
   const [error, setError] = useState(null);
   const [actionError, setActionError] = useState(null);
@@ -27,11 +16,7 @@ export default function Inventory() {
   const { user } = useAuth();
   const isOwner = user?.role === "owner";
 
-  const load = () =>
-    api
-      .getInventory()
-      .then((data) => setItems(data.items))
-      .catch((e) => setError(e.message));
+  const load = () => api.getInventory().then((data) => setItems(data.items)).catch((e) => setError(e.message));
 
   useEffect(() => {
     load();
@@ -56,13 +41,7 @@ export default function Inventory() {
 
   const startEdit = (item) => {
     setEditingId(item.id);
-    setForm({
-      name: item.name,
-      unit: item.unit,
-      quantity: item.quantity,
-      reorderLevel: item.reorderLevel,
-      supplier: item.supplier || ""
-    });
+    setForm({ name: item.name, unit: item.unit, quantity: item.quantity, reorderLevel: item.reorderLevel, supplier: item.supplier || "" });
   };
 
   const resetForm = () => {
@@ -109,66 +88,40 @@ export default function Inventory() {
     }
   };
 
-  if (error) return <p style={{ padding: 28, color: "var(--red)" }}>Couldn't load inventory: {error}</p>;
-  if (!items) return <p style={{ padding: 28, color: "var(--text-secondary)" }}>Loading inventory…</p>;
+  if (error) return <AdminPage title="Inventory"><p style={{ color: "var(--a-danger-text)" }}>Couldn't load inventory: {error}</p></AdminPage>;
+  if (!items) return <AdminPage title="Inventory"><p style={{ color: "var(--a-text-secondary)" }}>Loading…</p></AdminPage>;
 
-  const lowStock = items.filter((i) => i.status !== "in_stock").length;
-  const outOfStock = items.filter((i) => i.status === "out_of_stock").length;
+  const low = items.filter((i) => i.status !== "in_stock").length;
+  const out = items.filter((i) => i.status === "out_of_stock").length;
   const sorted = [...items].sort((a, b) => {
     const order = { out_of_stock: 0, low_stock: 1, in_stock: 2 };
     return order[a.status] - order[b.status];
   });
 
   return (
-    <div style={{ padding: "28px", maxWidth: "1100px", margin: "0 auto" }}>
-      <h1 style={{ fontSize: "24px", marginBottom: "4px" }}>Inventory</h1>
-      <p style={{ color: "var(--text-secondary)", fontSize: "14px", marginBottom: "24px" }}>
-        {items.length} ingredients tracked.
-      </p>
+    <AdminPage eyebrow={`${items.length} ingredients tracked`} title="Inventory">
+      <StatGrid columns={3}>
+        <StatCard label="Total items" value={items.length} />
+        <StatCard label="Low stock" value={low} warn={low > 0} />
+        <StatCard label="Out of stock" value={out} warn={out > 0} />
+      </StatGrid>
 
-      <div
-        style={{
-          display: "grid",
-          gridTemplateColumns: "repeat(auto-fit, minmax(160px, 1fr))",
-          gap: "14px",
-          marginBottom: "24px"
-        }}
-      >
-        <MetricCard label="Total items" value={items.length} />
-        <MetricCard label="Low stock" value={lowStock} tone={lowStock ? "warning" : "default"} />
-        <MetricCard label="Out of stock" value={outOfStock} tone={outOfStock ? "warning" : "default"} />
-      </div>
+      {actionError && <p style={{ fontSize: 13, color: "var(--a-danger-text)", marginBottom: 14 }}>{actionError}</p>}
 
-      {actionError && <p style={{ fontSize: "13px", color: "var(--red)", marginBottom: "14px" }}>{actionError}</p>}
-
-      <div className="split-2col" style={{ display: "grid", gridTemplateColumns: isOwner ? "1fr 320px" : "1fr", gap: "24px" }}>
-        <div style={{ border: "1px solid var(--border)", borderRadius: "var(--radius)", overflow: "hidden" }}>
-          {sorted.map((item, i) => (
-            <div
-              key={item.id}
-              style={{
-                display: "flex",
-                flexWrap: "wrap",
-                justifyContent: "space-between",
-                alignItems: "center",
-                padding: "12px 14px",
-                background: "var(--surface-1)",
-                borderBottom: i < sorted.length - 1 ? "1px solid var(--border)" : "none",
-                gap: "10px"
-              }}
-            >
+      <div className="admin-two-col" style={{ gridTemplateColumns: isOwner ? undefined : "1fr" }}>
+        <ListPanel>
+          {sorted.map((item) => (
+            <ListRow key={item.id}>
               <div style={{ minWidth: 0, flex: "1 1 160px" }}>
-                <p style={{ margin: 0, fontSize: "13px" }}>{item.name}</p>
-                <p style={{ margin: "3px 0 0", fontSize: "12px", color: "var(--text-secondary)" }}>
+                <p style={{ margin: 0, fontSize: 13 }}>{item.name}</p>
+                <p style={{ margin: "3px 0 0", fontSize: 11.5, color: "var(--a-text-secondary)" }}>
                   Reorder level: {item.reorderLevel} {item.unit} · {item.supplier}
                 </p>
               </div>
-              <div style={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: "10px" }}>
+              <div style={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: 8 }}>
                 <div style={{ textAlign: "right" }}>
-                  <p style={{ margin: "0 0 4px", fontSize: "13px" }}>
-                    {item.quantity} {item.unit} left
-                  </p>
-                  <StatusBadge status={item.status} />
+                  <p style={{ margin: "0 0 4px", fontSize: 12 }}>{item.quantity} {item.unit} left</p>
+                  <StatusPill status={item.status} />
                 </div>
                 <input
                   type="number"
@@ -176,108 +129,55 @@ export default function Inventory() {
                   placeholder={item.quantity}
                   value={qtyDrafts[item.id] ?? ""}
                   onChange={(e) => setQtyDrafts((d) => ({ ...d, [item.id]: e.target.value }))}
-                  style={{ width: "60px", padding: "5px 6px", fontSize: "12px", border: "1px solid var(--border)", borderRadius: "6px" }}
+                  className="admin-qty-input"
                 />
-                <button
-                  onClick={() => saveQuantity(item.id)}
-                  style={{ padding: "5px 10px", fontSize: "11px", border: "1px solid var(--border-strong)", borderRadius: "6px", background: "var(--surface-1)" }}
-                >
-                  Set
-                </button>
+                <button onClick={() => saveQuantity(item.id)} className="admin-btn-xs">Set</button>
                 {isOwner && (
                   <>
-                    <button
-                      onClick={() => startEdit(item)}
-                      style={{ padding: "5px 10px", fontSize: "11px", border: "1px solid var(--border-strong)", borderRadius: "6px", background: "var(--surface-1)" }}
-                    >
-                      Edit
-                    </button>
-                    <button
-                      onClick={() => handleDelete(item)}
-                      style={{ padding: "5px 10px", fontSize: "11px", border: "1px solid var(--border)", borderRadius: "6px", background: "var(--surface-1)", color: "var(--red)" }}
-                    >
-                      Delete
-                    </button>
+                    <button onClick={() => startEdit(item)} className="admin-btn-xs">Edit</button>
+                    <button onClick={() => handleDelete(item)} className="admin-btn-xs danger">Delete</button>
                   </>
                 )}
               </div>
-            </div>
+            </ListRow>
           ))}
           {items.length === 0 && (
-            <p style={{ padding: "14px", fontSize: "13px", color: "var(--text-secondary)" }}>
+            <p style={{ padding: 14, fontSize: 13, color: "var(--a-text-secondary)" }}>
               No ingredients yet{isOwner ? " — add one to the right." : "."}
             </p>
           )}
-        </div>
+        </ListPanel>
 
         {isOwner && (
-          <form
-            onSubmit={handleSubmit}
-            style={{ border: "1px solid var(--border)", borderRadius: "var(--radius)", padding: "16px", alignSelf: "start" }}
-          >
-            <h2 style={{ fontSize: "15px", marginBottom: "12px" }}>{editingId ? "Edit ingredient" : "Add ingredient"}</h2>
-
-            <input
-              type="text"
-              placeholder="Name"
-              value={form.name}
-              onChange={(e) => setForm({ ...form, name: e.target.value })}
-              style={inputStyle}
-              required
-            />
-            <input
-              type="text"
-              placeholder="Unit (e.g. kg, l)"
-              value={form.unit}
-              onChange={(e) => setForm({ ...form, unit: e.target.value })}
-              style={inputStyle}
-              required
-            />
-            <input
-              type="number"
-              step="0.01"
-              placeholder="Quantity in stock"
-              value={form.quantity}
-              onChange={(e) => setForm({ ...form, quantity: e.target.value })}
-              style={inputStyle}
-            />
-            <input
-              type="number"
-              step="0.01"
-              placeholder="Reorder level"
-              value={form.reorderLevel}
-              onChange={(e) => setForm({ ...form, reorderLevel: e.target.value })}
-              style={inputStyle}
-            />
-            <input
-              type="text"
-              placeholder="Supplier"
-              value={form.supplier}
-              onChange={(e) => setForm({ ...form, supplier: e.target.value })}
-              style={inputStyle}
-            />
-
-            <div style={{ display: "flex", gap: "8px" }}>
-              <button
-                type="submit"
-                disabled={saving}
-                style={{ flex: 1, padding: "9px", fontSize: "13px", background: "var(--green)", color: "var(--cream)", border: "none", borderRadius: "8px" }}
-              >
+          <form onSubmit={handleSubmit} className="admin-form-panel">
+            <p className="admin-section-title">{editingId ? "Edit ingredient" : "Add ingredient"}</p>
+            <input className="admin-search" placeholder="Name" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} style={{ marginBottom: 8 }} required />
+            <input className="admin-search" placeholder="Unit (e.g. kg, l)" value={form.unit} onChange={(e) => setForm({ ...form, unit: e.target.value })} style={{ marginBottom: 8 }} required />
+            <input type="number" step="0.01" className="admin-search" placeholder="Quantity in stock" value={form.quantity} onChange={(e) => setForm({ ...form, quantity: e.target.value })} style={{ marginBottom: 8 }} />
+            <input type="number" step="0.01" className="admin-search" placeholder="Reorder level" value={form.reorderLevel} onChange={(e) => setForm({ ...form, reorderLevel: e.target.value })} style={{ marginBottom: 8 }} />
+            <input className="admin-search" placeholder="Supplier" value={form.supplier} onChange={(e) => setForm({ ...form, supplier: e.target.value })} style={{ marginBottom: 10 }} />
+            <div style={{ display: "flex", gap: 8 }}>
+              <button type="submit" disabled={saving} className="admin-btn-primary" style={{ flex: 1 }}>
                 {saving ? "Saving…" : editingId ? "Save changes" : "Add ingredient"}
               </button>
-              {editingId && (
-                <button
-                  type="button"
-                  onClick={resetForm}
-                  style={{ padding: "9px 14px", fontSize: "13px", background: "var(--surface-2)", border: "1px solid var(--border)", borderRadius: "8px" }}
-                >
-                  Cancel
-                </button>
-              )}
+              {editingId && <button type="button" onClick={resetForm} className="admin-btn-secondary" style={{ width: "auto", padding: "9px 14px" }}>Cancel</button>}
             </div>
           </form>
         )}
       </div>
-    </div>
+
+      <style>{`
+        .admin-section-title { font-size: 14px; font-weight: 500; margin-bottom: 10px; }
+        .admin-two-col { display: grid; grid-template-columns: 1fr; gap: 18px; }
+        @media (min-width: 900px) { .admin-two-col { grid-template-columns: 1.5fr 1fr; } }
+        .admin-search { width: 100%; border: 1px solid var(--a-border); border-radius: 6px; padding: 8px 12px; font-size: 13px; box-sizing: border-box; }
+        .admin-form-panel { background: var(--a-panel); border: 1px solid var(--a-border); border-radius: var(--a-radius); padding: 16px; align-self: start; }
+        .admin-btn-primary { width: 100%; padding: 9px; background: var(--a-green); color: #fff; border: none; border-radius: 6px; font-size: 13px; }
+        .admin-btn-secondary { padding: 9px; background: var(--a-bg); border: 1px solid var(--a-border); border-radius: 6px; font-size: 13px; }
+        .admin-qty-input { width: 60px; padding: 5px 6px; font-size: 12px; border: 1px solid var(--a-border); border-radius: 6px; }
+        .admin-btn-xs { padding: 5px 10px; font-size: 11px; border: 1px solid var(--a-border); border-radius: 6px; background: var(--a-panel); }
+        .admin-btn-xs.danger { color: var(--a-danger-text); }
+      `}</style>
+    </AdminPage>
   );
 }

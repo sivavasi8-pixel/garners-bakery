@@ -1,33 +1,45 @@
 :root {
-  /* GARNERS brand palette, drawn from real storefront + packaging photos */
+  /* GARNERS brand — corrected from real packaging/storefront photos:
+     clean marble/white boutique bakery, deep green serif wordmark,
+     minimal black-on-white labels. Not rustic/kraft-heavy. */
   --green: #1f3d2e;
-  --green-dark: #142a1f;
-  --cream: #f6f1e4;
-  --kraft: #c9a063;
-  --kraft-light: #ecdfc0;
+  --green-dark: #12241a;
+  --green-tint: #eaf0ec;
+  --cream: #faf8f3;
+  --paper: #ffffff;
+  --stone: #efece3;
   --red: #a13a2e;
-  --wood: #6b4a32;
-  --charcoal: #2b2823;
-  --teal-wall: #2e4a46;
-  --gold: #b8923f; /* metallic foil from gift-hamper packaging — premium/gifting contexts only */
+  --red-tint: #f7e9e6;
+  --gold: #b8925a;
+  --charcoal: #26241f;
 
   --text-primary: var(--charcoal);
-  --text-secondary: #6b6558;
-  --text-muted: #a39d8c;
+  --text-secondary: #6e6a5e;
+  --text-muted: #a19c8c;
   --text-inverse: var(--cream);
 
   --surface-0: var(--cream);
-  --surface-1: #ffffff;
-  --surface-2: var(--kraft-light);
+  --surface-1: var(--paper);
+  --surface-2: var(--stone);
 
-  --border: #e2d7bd;
-  --border-strong: var(--kraft);
+  --border: #e6e2d6;
+  --border-strong: #d8d2c0;
+
+  --success-bg: #e7f2e4;
+  --success-text: #2c5c26;
+  --warning-bg: #f7ecd8;
+  --warning-text: #8a5a12;
+  --danger-bg: var(--red-tint);
+  --danger-text: var(--red);
 
   --radius: 10px;
   --radius-lg: 16px;
 
   --font-display: "Fraunces", Georgia, serif;
   --font-body: "Inter", -apple-system, sans-serif;
+
+  --tabbar-h: 60px;
+  --topbar-h: 64px;
 }
 
 * { box-sizing: border-box; }
@@ -36,8 +48,7 @@ html, body {
   margin: 0;
   /* Safety net: nothing on the page should be able to force sideways scroll —
      any element that overflows just clips instead of dragging the whole page
-     into a scrolled, half-cut-off state (see TopNav's mobile menu for the
-     actual fix; this is the backstop for anything else that overflows). */
+     into a scrolled, half-cut-off state. */
   overflow-x: hidden;
   background: var(--surface-0);
   color: var(--text-primary);
@@ -57,6 +68,8 @@ button {
 }
 
 a { color: inherit; }
+
+img { max-width: 100%; display: block; }
 
 /* Used by the Reports page's "Print / Save as PDF" button — hides chrome that
    shouldn't end up on a printed page (nav bar, the export buttons themselves). */
@@ -82,17 +95,18 @@ a { color: inherit; }
   }
 }
 
-/* TopNav mobile menu — see components/TopNav.jsx. Hidden/shown purely by
-   CSS so it can never get stuck open/closed if the state and viewport
-   width disagree (e.g. resizing a browser window). */
-.nav-toggle { display: none; }
-.nav-mobile-panel { display: none; }
-
-@media (max-width: 860px) {
-  .nav-links-desktop { display: none !important; }
-  .nav-toggle { display: inline-flex !important; }
-  .nav-mobile-panel.open {
-    display: flex !important;
-    flex-direction: column;
-  }
+/* Shared page padding for pages wrapped in CustomerNav — bottom padding clears
+   the fixed mobile tab bar (see CustomerNav.jsx) so the last element on any
+   customer page is never hidden behind it. */
+.page {
+  padding: 20px 16px calc(var(--tabbar-h) + 24px);
+  max-width: 1100px;
+  margin: 0 auto;
+  box-sizing: border-box;
+}
+@media (min-width: 640px) {
+  .page { padding: 28px 24px calc(var(--tabbar-h) + 24px); }
+}
+@media (min-width: 960px) {
+  .page { padding: 32px 32px; }
 }

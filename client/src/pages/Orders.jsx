@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { api } from "../api";
-import StatusBadge from "../components/StatusBadge";
+import { AdminPage, StatusPill } from "../components/admin/AdminUI";
 
 const statusOptions = ["placed", "baking", "ready", "delivered", "cancelled"];
 
@@ -10,7 +10,7 @@ const itemsLabel = (items) =>
     .map((it) => `${it.name}${it.qty > 1 ? ` x${it.qty}` : ""}${it.note ? ` — "${it.note}"` : ""}`)
     .join(", ");
 
-export default function Orders() {
+export default function AdminOrders() {
   const [orders, setOrders] = useState(null);
   const [error, setError] = useState(null);
   const [actionError, setActionError] = useState(null);
@@ -52,8 +52,8 @@ export default function Orders() {
       setEditingPickupId(null);
     });
 
-  if (error) return <p style={{ padding: 28, color: "var(--red)" }}>Couldn't load orders: {error}</p>;
-  if (!orders) return <p style={{ padding: 28, color: "var(--text-secondary)" }}>Loading orders…</p>;
+  if (error) return <AdminPage title="Orders"><p style={{ color: "var(--a-danger-text)" }}>Couldn't load orders: {error}</p></AdminPage>;
+  if (!orders) return <AdminPage title="Orders"><p style={{ color: "var(--a-text-secondary)" }}>Loading…</p></AdminPage>;
 
   const q = search.trim().toLowerCase();
   const filtered = orders.filter((o) => {
@@ -62,121 +62,144 @@ export default function Orders() {
     return o.customerName.toLowerCase().includes(q) || String(o.id).includes(q);
   });
 
-  return (
-    <div style={{ padding: "28px", maxWidth: "1100px", margin: "0 auto" }}>
-      <h1 style={{ fontSize: "24px", marginBottom: "4px" }}>Orders</h1>
-      <p style={{ color: "var(--text-secondary)", fontSize: "14px", marginBottom: "20px" }}>
-        {orders.length} total. Search by customer name or order #.
-      </p>
-
-      <div style={{ display: "flex", gap: "8px", marginBottom: "18px" }}>
+  const PickupCell = ({ o }) =>
+    editingPickupId === o.id ? (
+      <div style={{ display: "flex", gap: 4 }}>
         <input
-          type="text"
-          placeholder="Search customer or order #…"
+          value={pickupDraft}
+          onChange={(e) => setPickupDraft(e.target.value)}
+          className="admin-pickup-input"
+        />
+        <button onClick={() => savePickup(o.id)} className="admin-link-btn">Save</button>
+        <button onClick={() => setEditingPickupId(null)} className="admin-link-btn muted">Cancel</button>
+      </div>
+    ) : (
+      <span>
+        {o.pickupTime || "—"}
+        <button onClick={() => startPickupEdit(o)} className="admin-link-btn" style={{ marginLeft: 6 }}>edit</button>
+      </span>
+    );
+
+  const StatusCell = ({ o }) => (
+    <div style={{ display: "flex", alignItems: "center", gap: 6, flexWrap: "wrap" }}>
+      <StatusPill status={o.status} />
+      {o.status !== "delivered" && o.status !== "cancelled" && (
+        <>
+          <select
+            className="admin-select-sm"
+            value={o.status}
+            onChange={(e) => handleStatusChange(o.id, e.target.value)}
+          >
+            {statusOptions.filter((s) => s !== "cancelled").map((s) => <option key={s} value={s}>{s}</option>)}
+          </select>
+          <button onClick={() => handleCancel(o)} className="admin-link-btn danger">cancel</button>
+        </>
+      )}
+    </div>
+  );
+
+  const PaymentCell = ({ o }) =>
+    o.paymentStatus === "paid" ? (
+      <span style={{ fontSize: 11.5, color: "var(--a-success-text)" }}>paid ({o.paymentMethod})</span>
+    ) : (
+      <button onClick={() => markPaid(o.id)} className="admin-btn-xs">Mark paid</button>
+    );
+
+  return (
+    <AdminPage eyebrow={`${orders.length} total. Search by customer name or order #`} title="Orders">
+      <div className="admin-filters">
+        <input
+          className="admin-search"
+          placeholder="Search customer or order #..."
           value={search}
           onChange={(e) => setSearch(e.target.value)}
-          style={{ flex: 1, padding: "8px 10px", fontSize: "13px", border: "1px solid var(--border)", borderRadius: "8px" }}
         />
-        <select
-          value={statusFilter}
-          onChange={(e) => setStatusFilter(e.target.value)}
-          style={{ padding: "8px 10px", fontSize: "13px", border: "1px solid var(--border)", borderRadius: "8px" }}
-        >
+        <select className="admin-select-sm" value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)}>
           <option value="all">All statuses</option>
-          {statusOptions.map((s) => (
-            <option key={s} value={s}>{s}</option>
-          ))}
+          {statusOptions.map((s) => <option key={s} value={s}>{s}</option>)}
         </select>
       </div>
 
-      {actionError && <p style={{ fontSize: "13px", color: "var(--red)", marginBottom: "14px" }}>{actionError}</p>}
+      {actionError && <p style={{ fontSize: 13, color: "var(--a-danger-text)", marginBottom: 14 }}>{actionError}</p>}
 
-      <div style={{ border: "1px solid var(--border)", borderRadius: "var(--radius)", overflow: "hidden" }}>
-        {filtered.map((o, i) => (
-          <div
-            key={o.id}
-            style={{
-              padding: "12px 14px",
-              background: "var(--surface-1)",
-              borderBottom: i < filtered.length - 1 ? "1px solid var(--border)" : "none"
-            }}
-          >
-            <div style={{ display: "flex", flexWrap: "wrap", justifyContent: "space-between", alignItems: "flex-start", gap: "10px" }}>
-              <div style={{ minWidth: 0, flex: "1 1 200px" }}>
-                <p style={{ margin: 0, fontSize: "13px" }}>
-                  #{o.id} · {o.customerName}{" "}
-                  <Link to={`/receipt/${o.id}`} style={{ fontSize: "11px", color: "var(--green)" }}>receipt</Link>
-                </p>
-                <p style={{ margin: "3px 0 0", fontSize: "12px", color: "var(--text-secondary)" }}>
-                  {itemsLabel(o.items)} · ₹{o.total}
-                </p>
+      {/* Desktop table */}
+      <div className="admin-table-wrap desktop-only">
+        <table className="admin-data-table">
+          <thead>
+            <tr>
+              <th>Order</th><th>Items</th><th>Total</th><th>Pickup</th><th>Payment</th><th>Status</th>
+            </tr>
+          </thead>
+          <tbody>
+            {filtered.map((o) => (
+              <tr key={o.id}>
+                <td>
+                  #{o.id}<br />
+                  <span style={{ color: "var(--a-text-secondary)" }}>{o.customerName}</span>{" "}
+                  <Link to={`/receipt/${o.id}`} className="admin-receipt-link">receipt</Link>
+                </td>
+                <td style={{ maxWidth: 260 }}>{itemsLabel(o.items)}</td>
+                <td>₹{o.total}</td>
+                <td><PickupCell o={o} /></td>
+                <td><PaymentCell o={o} /></td>
+                <td><StatusCell o={o} /></td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+        {filtered.length === 0 && <p style={{ padding: 14, fontSize: 13, color: "var(--a-text-secondary)" }}>No orders match.</p>}
+      </div>
 
-                {editingPickupId === o.id ? (
-                  <div style={{ display: "flex", gap: "4px", marginTop: "4px" }}>
-                    <input
-                      value={pickupDraft}
-                      onChange={(e) => setPickupDraft(e.target.value)}
-                      style={{ fontSize: "12px", padding: "2px 6px", border: "1px solid var(--border)", borderRadius: "4px" }}
-                    />
-                    <button onClick={() => savePickup(o.id)} style={{ fontSize: "11px", border: "none", background: "none", color: "var(--green)", cursor: "pointer" }}>Save</button>
-                    <button onClick={() => setEditingPickupId(null)} style={{ fontSize: "11px", border: "none", background: "none", color: "var(--text-muted)", cursor: "pointer" }}>Cancel</button>
-                  </div>
-                ) : (
-                  <p style={{ margin: "2px 0 0", fontSize: "12px", color: "var(--text-secondary)" }}>
-                    Pickup: {o.pickupTime || "—"}
-                    <button
-                      onClick={() => startPickupEdit(o)}
-                      style={{ marginLeft: "6px", fontSize: "11px", border: "none", background: "none", color: "var(--green)", cursor: "pointer" }}
-                    >
-                      edit
-                    </button>
-                  </p>
-                )}
-              </div>
-
-              <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: "6px", flexShrink: 0 }}>
-                <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
-                  {o.paymentStatus === "paid" ? (
-                    <span style={{ fontSize: "11px", color: "#2c5c26" }}>paid ({o.paymentMethod})</span>
-                  ) : (
-                    <button
-                      onClick={() => markPaid(o.id)}
-                      style={{ fontSize: "11px", padding: "3px 8px", border: "1px solid var(--border-strong)", borderRadius: "6px", background: "var(--surface-1)" }}
-                    >
-                      Mark paid
-                    </button>
-                  )}
-                </div>
-                <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
-                  <StatusBadge status={o.status} />
-                  {o.status !== "delivered" && o.status !== "cancelled" && (
-                    <>
-                      <select
-                        value={o.status}
-                        onChange={(e) => handleStatusChange(o.id, e.target.value)}
-                        style={{ fontSize: "12px", padding: "4px 6px", border: "1px solid var(--border)", borderRadius: "6px" }}
-                      >
-                        {statusOptions.filter((s) => s !== "cancelled").map((s) => (
-                          <option key={s} value={s}>{s}</option>
-                        ))}
-                      </select>
-                      <button
-                        onClick={() => handleCancel(o)}
-                        style={{ fontSize: "11px", border: "none", background: "none", color: "var(--red)", cursor: "pointer" }}
-                      >
-                        cancel
-                      </button>
-                    </>
-                  )}
-                </div>
-              </div>
+      {/* Mobile cards */}
+      <div className="admin-card-row mobile-only">
+        {filtered.map((o) => (
+          <div key={o.id} className="admin-order-card">
+            <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 4, flexWrap: "wrap", gap: 6 }}>
+              <p style={{ margin: 0, fontSize: 13 }}>
+                #{o.id} · {o.customerName} <Link to={`/receipt/${o.id}`} className="admin-receipt-link">receipt</Link>
+              </p>
+              <span style={{ fontSize: 13, fontWeight: 500 }}>₹{o.total}</span>
+            </div>
+            <p style={{ margin: "0 0 6px", fontSize: 11.5, color: "var(--a-text-secondary)" }}>{itemsLabel(o.items)}</p>
+            <p style={{ margin: "0 0 8px", fontSize: 12, color: "var(--a-text-secondary)" }}>Pickup: <PickupCell o={o} /></p>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 8 }}>
+              <PaymentCell o={o} />
+              <StatusCell o={o} />
             </div>
           </div>
         ))}
-        {filtered.length === 0 && (
-          <p style={{ padding: "14px", fontSize: "13px", color: "var(--text-secondary)" }}>No orders match.</p>
-        )}
+        {filtered.length === 0 && <p style={{ fontSize: 13, color: "var(--a-text-secondary)" }}>No orders match.</p>}
       </div>
-    </div>
+
+      <style>{`
+        .admin-filters { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 14px; }
+        .admin-search {
+          flex: 1; min-width: 180px; border: 1px solid var(--a-border); border-radius: 6px;
+          padding: 8px 12px; font-size: 13px;
+        }
+        .admin-table-wrap { background: var(--a-panel); border: 1px solid var(--a-border); border-radius: var(--a-radius); overflow-x: auto; }
+        .admin-data-table { width: 100%; font-size: 12.5px; }
+        .admin-data-table th { text-align: left; padding: 8px 12px; font-weight: 500; color: var(--a-text-secondary); border-bottom: 1px solid var(--a-border); white-space: nowrap; }
+        .admin-data-table td { padding: 9px 12px; border-bottom: 1px solid var(--a-border); vertical-align: top; }
+        .admin-data-table tr:last-child td { border-bottom: none; }
+        .admin-select-sm { border: 1px solid var(--a-border); border-radius: 6px; padding: 5px 8px; font-size: 12px; background: var(--a-panel); }
+        .admin-btn-xs { font-size: 11px; padding: 3px 8px; border: 1px solid var(--a-border); border-radius: 6px; background: var(--a-panel); }
+        .admin-receipt-link { font-size: 11px; color: var(--a-green); }
+        .admin-pickup-input { font-size: 12px; padding: 2px 6px; border: 1px solid var(--a-border); border-radius: 4px; width: 90px; }
+        .admin-link-btn { border: none; background: none; color: var(--a-green); cursor: pointer; font-size: 11px; padding: 0; }
+        .admin-link-btn.muted { color: var(--a-text-muted); }
+        .admin-link-btn.danger { color: var(--a-danger-text); }
+
+        .admin-card-row { display: flex; flex-direction: column; gap: 8px; }
+        .admin-order-card { background: var(--a-panel); border: 1px solid var(--a-border); border-radius: var(--a-radius); padding: 12px; }
+
+        .desktop-only { display: none; }
+        .mobile-only { display: block; }
+        @media (min-width: 900px) {
+          .desktop-only { display: block; }
+          .mobile-only { display: none; }
+        }
+      `}</style>
+    </AdminPage>
   );
 }

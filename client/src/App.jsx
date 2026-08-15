@@ -1,5 +1,6 @@
 import { Routes, Route } from "react-router-dom";
-import TopNav from "./components/TopNav";
+import CustomerNav from "./components/CustomerNav";
+import AdminLayout from "./components/admin/AdminLayout";
 import ProtectedRoute from "./auth/ProtectedRoute";
 import Dashboard from "./pages/Dashboard";
 import Inventory from "./pages/Inventory";
@@ -16,49 +17,37 @@ import Orders from "./pages/Orders";
 
 export default function App() {
   return (
-    <div>
-      <TopNav />
-      <Routes>
+    <Routes>
+      {/* Customer storefront shell: warm retail look (CustomerNav + theme.css).
+          Browsing the menu stays public; Order.jsx itself gates checkout on
+          being logged in as a customer. */}
+      <Route element={<CustomerNav />}>
+        <Route path="/order" element={<Order />} />
         <Route
-          path="/"
+          path="/my-orders"
           element={
-            <ProtectedRoute roles={["owner", "staff"]}>
-              <Dashboard />
+            <ProtectedRoute roles={["customer"]}>
+              <MyOrders />
             </ProtectedRoute>
           }
         />
-        <Route
-          path="/inventory"
-          element={
-            <ProtectedRoute roles={["owner", "staff"]}>
-              <Inventory />
-            </ProtectedRoute>
-          }
-        />
-        <Route
-          path="/staff"
-          element={
-            <ProtectedRoute roles={["owner", "staff"]}>
-              <Staff />
-            </ProtectedRoute>
-          }
-        />
-        <Route
-          path="/orders"
-          element={
-            <ProtectedRoute roles={["owner", "staff"]}>
-              <Orders />
-            </ProtectedRoute>
-          }
-        />
-        <Route
-          path="/pos"
-          element={
-            <ProtectedRoute roles={["owner", "staff"]}>
-              <POS />
-            </ProtectedRoute>
-          }
-        />
+        <Route path="/login" element={<Login />} />
+        <Route path="/signup" element={<Signup />} />
+      </Route>
+
+      {/* Owner/staff backend shell: clean software look (AdminLayout + admin-theme.css) */}
+      <Route
+        element={
+          <ProtectedRoute roles={["owner", "staff"]}>
+            <AdminLayout />
+          </ProtectedRoute>
+        }
+      >
+        <Route path="/" element={<Dashboard />} />
+        <Route path="/pos" element={<POS />} />
+        <Route path="/orders" element={<Orders />} />
+        <Route path="/inventory" element={<Inventory />} />
+        <Route path="/staff" element={<Staff />} />
         <Route
           path="/menu-admin"
           element={
@@ -75,28 +64,19 @@ export default function App() {
             </ProtectedRoute>
           }
         />
-        <Route
-          path="/my-orders"
-          element={
-            <ProtectedRoute roles={["customer"]}>
-              <MyOrders />
-            </ProtectedRoute>
-          }
-        />
-        {/* Any logged-in role — the backend enforces a customer can only fetch their own order */}
-        <Route
-          path="/receipt/:id"
-          element={
-            <ProtectedRoute>
-              <Receipt />
-            </ProtectedRoute>
-          }
-        />
-        {/* Browsing the menu stays public; Order.jsx itself gates checkout on being logged in as a customer */}
-        <Route path="/order" element={<Order />} />
-        <Route path="/login" element={<Login />} />
-        <Route path="/signup" element={<Signup />} />
-      </Routes>
-    </div>
+      </Route>
+
+      {/* Any logged-in role — the backend enforces a customer can only fetch their own
+          order. Standalone (no shell chrome): it's a print-friendly receipt, and both
+          nav shells are hidden on print anyway. */}
+      <Route
+        path="/receipt/:id"
+        element={
+          <ProtectedRoute>
+            <Receipt />
+          </ProtectedRoute>
+        }
+      />
+    </Routes>
   );
 }

@@ -1,12 +1,11 @@
 import { useEffect, useState } from "react";
 import { api } from "../api";
 import { useAuth } from "../auth/AuthContext";
-import MetricCard from "../components/MetricCard";
-import StatusBadge from "../components/StatusBadge";
+import { AdminPage, StatGrid, StatCard, StatusPill, ListPanel, ListRow } from "../components/admin/AdminUI";
 
 const statusOptions = ["clocked_in", "on_break", "absent", "clocked_out"];
 
-export default function Staff() {
+export default function AdminStaff() {
   const [staff, setStaff] = useState(null);
   const [tasks, setTasks] = useState(null);
   const [error, setError] = useState(null);
@@ -23,10 +22,7 @@ export default function Staff() {
 
   const load = () =>
     Promise.all([api.getStaff(), api.getTasks()])
-      .then(([s, t]) => {
-        setStaff(s.staff);
-        setTasks(t.tasks);
-      })
+      .then(([s, t]) => { setStaff(s.staff); setTasks(t.tasks); })
       .catch((e) => setError(e.message));
 
   useEffect(() => {
@@ -141,313 +137,154 @@ export default function Staff() {
     }
   };
 
-  if (error) return <p style={{ padding: 28, color: "var(--red)" }}>Couldn't load staff: {error}</p>;
-  if (!staff || !tasks) return <p style={{ padding: 28, color: "var(--text-secondary)" }}>Loading staff…</p>;
+  if (error) return <AdminPage title="Staff"><p style={{ color: "var(--a-danger-text)" }}>Couldn't load staff: {error}</p></AdminPage>;
+  if (!staff || !tasks) return <AdminPage title="Staff"><p style={{ color: "var(--a-text-secondary)" }}>Loading…</p></AdminPage>;
 
   const onShift = staff.filter((s) => s.status === "clocked_in").length;
   const absent = staff.filter((s) => s.status === "absent").length;
-  const openTasks = tasks.filter((t) => !t.done).length;
 
   return (
-    <div style={{ padding: "28px", maxWidth: "1100px", margin: "0 auto" }}>
-      <h1 style={{ fontSize: "24px", marginBottom: "4px" }}>Staff</h1>
-      <p style={{ color: "var(--text-secondary)", fontSize: "14px", marginBottom: "24px" }}>
-        {staff.length} team members.
-      </p>
+    <AdminPage eyebrow={`${staff.length} team members`} title="Staff">
+      <StatGrid columns={3}>
+        <StatCard label="On shift now" value={onShift} />
+        <StatCard label="Open tasks" value={tasks.filter((t) => !t.done).length} />
+        <StatCard label="Absent today" value={absent} warn={absent > 0} />
+      </StatGrid>
 
-      <div
-        style={{
-          display: "grid",
-          gridTemplateColumns: "repeat(auto-fit, minmax(160px, 1fr))",
-          gap: "14px",
-          marginBottom: "24px"
-        }}
-      >
-        <MetricCard label="On shift now" value={onShift} />
-        <MetricCard label="Open tasks" value={openTasks} />
-        <MetricCard label="Absent today" value={absent} tone={absent ? "warning" : "default"} />
-      </div>
+      {actionError && <p style={{ fontSize: 13, color: "var(--a-danger-text)", marginBottom: 14 }}>{actionError}</p>}
 
-      {actionError && <p style={{ fontSize: "13px", color: "var(--red)", marginBottom: "14px" }}>{actionError}</p>}
-
-      <div className="split-2col" style={{ display: "grid", gridTemplateColumns: "1.3fr 1fr", gap: "20px" }}>
-        <section>
-          <h2 style={{ fontSize: "16px", marginBottom: "10px" }}>Today's roster</h2>
-          <div style={{ border: "1px solid var(--border)", borderRadius: "var(--radius)", overflow: "hidden" }}>
-            {staff.map((s, i) => (
-              <div
-                key={s.id}
-                style={{
-                  display: "flex",
-                  flexWrap: "wrap",
-                  justifyContent: "space-between",
-                  alignItems: "center",
-                  padding: "12px 14px",
-                  background: "var(--surface-1)",
-                  borderBottom: i < staff.length - 1 ? "1px solid var(--border)" : "none",
-                  gap: "10px"
-                }}
-              >
-                <div style={{ display: "flex", alignItems: "center", gap: "10px", minWidth: 0 }}>
-                  <div
-                    style={{
-                      width: 32,
-                      height: 32,
-                      borderRadius: "50%",
-                      background: "var(--surface-2)",
-                      color: "var(--wood)",
-                      display: "flex",
-                      alignItems: "center",
-                      justifyContent: "center",
-                      fontSize: "12px",
-                      fontWeight: 500,
-                      flexShrink: 0
-                    }}
-                  >
-                    {s.name.split(" ").map((n) => n[0]).join("")}
-                  </div>
+      <div className="admin-two-col">
+        <div>
+          <ListPanel>
+            {staff.map((s) => (
+              <ListRow key={s.id}>
+                <div style={{ display: "flex", alignItems: "center", gap: 10, minWidth: 0 }}>
+                  <div className="admin-avatar">{s.name.split(" ").map((n) => n[0]).join("")}</div>
                   <div>
-                    <p style={{ margin: 0, fontSize: "13px" }}>{s.name}</p>
+                    <p style={{ margin: 0, fontSize: 13 }}>{s.name}</p>
                     {editingShiftId === s.id ? (
-                      <div style={{ display: "flex", gap: "4px", marginTop: "2px" }}>
-                        <input
-                          value={shiftDraft}
-                          onChange={(e) => setShiftDraft(e.target.value)}
-                          style={{ fontSize: "12px", padding: "2px 6px", border: "1px solid var(--border)", borderRadius: "4px", width: "100px" }}
-                        />
-                        <button onClick={() => saveShift(s.id)} style={{ fontSize: "11px", border: "none", background: "none", color: "var(--green)", cursor: "pointer" }}>Save</button>
-                        <button onClick={() => setEditingShiftId(null)} style={{ fontSize: "11px", border: "none", background: "none", color: "var(--text-muted)", cursor: "pointer" }}>Cancel</button>
+                      <div style={{ display: "flex", gap: 4, marginTop: 2 }}>
+                        <input value={shiftDraft} onChange={(e) => setShiftDraft(e.target.value)} className="admin-inline-input" style={{ width: 90 }} />
+                        <button onClick={() => saveShift(s.id)} className="admin-link-btn">Save</button>
+                        <button onClick={() => setEditingShiftId(null)} className="admin-link-btn muted">Cancel</button>
                       </div>
                     ) : (
-                      <p style={{ margin: "2px 0 0", fontSize: "12px", color: "var(--text-secondary)" }}>
+                      <p style={{ margin: "2px 0 0", fontSize: 11.5, color: "var(--a-text-secondary)" }}>
                         {s.role} · {s.shift}
-                        {isOwner && (
-                          <button
-                            onClick={() => startShiftEdit(s)}
-                            style={{ marginLeft: "6px", fontSize: "11px", border: "none", background: "none", color: "var(--green)", cursor: "pointer" }}
-                          >
-                            edit
-                          </button>
-                        )}
+                        {isOwner && <button onClick={() => startShiftEdit(s)} className="admin-link-btn" style={{ marginLeft: 6 }}>edit</button>}
                       </p>
                     )}
                   </div>
                 </div>
-                <div style={{ display: "flex", alignItems: "center", gap: "8px", flexShrink: 0 }}>
-                  <StatusBadge status={s.status} />
-                  <select
-                    value={s.status}
-                    onChange={(e) => handleStatusChange(s.id, e.target.value)}
-                    style={{ fontSize: "12px", padding: "4px 6px", border: "1px solid var(--border)", borderRadius: "6px" }}
-                  >
-                    {statusOptions.map((opt) => (
-                      <option key={opt} value={opt}>{opt.replace("_", " ")}</option>
-                    ))}
+                <div style={{ display: "flex", alignItems: "center", gap: 8, flexShrink: 0 }}>
+                  <StatusPill status={s.status} />
+                  <select className="admin-select-sm" value={s.status} onChange={(e) => handleStatusChange(s.id, e.target.value)}>
+                    {statusOptions.map((opt) => <option key={opt} value={opt}>{opt.replace("_", " ")}</option>)}
                   </select>
-                  {isOwner && (
-                    <button
-                      onClick={() => handleRemoveStaff(s)}
-                      style={{ border: "none", background: "none", color: "var(--red)", cursor: "pointer", fontSize: "11px" }}
-                    >
-                      remove
-                    </button>
-                  )}
+                  {isOwner && <button onClick={() => handleRemoveStaff(s)} className="admin-link-btn danger">remove</button>}
                 </div>
-              </div>
+              </ListRow>
             ))}
-          </div>
+          </ListPanel>
 
           {isOwner && (
-            <form
-              onSubmit={handleAddStaff}
-              style={{ border: "1px solid var(--border)", borderRadius: "var(--radius)", padding: "12px", marginTop: "14px" }}
-            >
-              <p style={{ margin: "0 0 8px", fontSize: "13px", fontWeight: 500 }}>Add a staff member</p>
-              <div style={{ display: "flex", flexWrap: "wrap", gap: "8px", marginBottom: "8px" }}>
-                <input
-                  type="text"
-                  placeholder="Name"
-                  value={newStaff.name}
-                  onChange={(e) => setNewStaff({ ...newStaff, name: e.target.value })}
-                  style={{ flex: 1, minWidth: "120px", padding: "7px 9px", fontSize: "12px", border: "1px solid var(--border)", borderRadius: "6px" }}
-                />
-                <input
-                  type="text"
-                  placeholder="Role (e.g. Baker)"
-                  value={newStaff.role}
-                  onChange={(e) => setNewStaff({ ...newStaff, role: e.target.value })}
-                  style={{ flex: 1, minWidth: "120px", padding: "7px 9px", fontSize: "12px", border: "1px solid var(--border)", borderRadius: "6px" }}
-                />
-                <input
-                  type="text"
-                  placeholder="Shift (e.g. 9am–5pm)"
-                  value={newStaff.shift}
-                  onChange={(e) => setNewStaff({ ...newStaff, shift: e.target.value })}
-                  style={{ flex: 1, minWidth: "120px", padding: "7px 9px", fontSize: "12px", border: "1px solid var(--border)", borderRadius: "6px" }}
-                />
+            <form onSubmit={handleAddStaff} className="admin-form-panel" style={{ marginTop: 14 }}>
+              <p className="admin-section-title">Add a staff member</p>
+              <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginBottom: 8 }}>
+                <input className="admin-search" placeholder="Name" value={newStaff.name} onChange={(e) => setNewStaff({ ...newStaff, name: e.target.value })} style={{ flex: 1, minWidth: 120 }} />
+                <input className="admin-search" placeholder="Role (e.g. Baker)" value={newStaff.role} onChange={(e) => setNewStaff({ ...newStaff, role: e.target.value })} style={{ flex: 1, minWidth: 120 }} />
+                <input className="admin-search" placeholder="Shift (e.g. 9am–5pm)" value={newStaff.shift} onChange={(e) => setNewStaff({ ...newStaff, shift: e.target.value })} style={{ flex: 1, minWidth: 120 }} />
               </div>
-
-              <label style={{ display: "flex", alignItems: "center", gap: "6px", fontSize: "12px", color: "var(--text-secondary)", marginBottom: "8px" }}>
-                <input
-                  type="checkbox"
-                  checked={newStaff.grantLogin}
-                  onChange={(e) => setNewStaff({ ...newStaff, grantLogin: e.target.checked })}
-                />
+              <label style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 12, color: "var(--a-text-secondary)", marginBottom: 8 }}>
+                <input type="checkbox" checked={newStaff.grantLogin} onChange={(e) => setNewStaff({ ...newStaff, grantLogin: e.target.checked })} />
                 Also grant them app access (email + password login)
               </label>
-
               {newStaff.grantLogin && (
-                <div style={{ display: "flex", flexWrap: "wrap", gap: "8px", marginBottom: "8px" }}>
-                  <input
-                    type="email"
-                    placeholder="Email"
-                    value={newStaff.email}
-                    onChange={(e) => setNewStaff({ ...newStaff, email: e.target.value })}
-                    style={{ flex: 1, minWidth: "140px", padding: "7px 9px", fontSize: "12px", border: "1px solid var(--border)", borderRadius: "6px" }}
-                  />
-                  <input
-                    type="password"
-                    placeholder="Password (min 6 chars)"
-                    value={newStaff.password}
-                    onChange={(e) => setNewStaff({ ...newStaff, password: e.target.value })}
-                    style={{ flex: 1, minWidth: "140px", padding: "7px 9px", fontSize: "12px", border: "1px solid var(--border)", borderRadius: "6px" }}
-                  />
+                <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginBottom: 8 }}>
+                  <input type="email" className="admin-search" placeholder="Email" value={newStaff.email} onChange={(e) => setNewStaff({ ...newStaff, email: e.target.value })} style={{ flex: 1, minWidth: 140 }} />
+                  <input type="password" className="admin-search" placeholder="Password (min 6 chars)" value={newStaff.password} onChange={(e) => setNewStaff({ ...newStaff, password: e.target.value })} style={{ flex: 1, minWidth: 140 }} />
                 </div>
               )}
-
-              <button
-                type="submit"
-                disabled={addingStaff}
-                style={{ width: "100%", padding: "8px", fontSize: "12px", background: "var(--green)", color: "var(--cream)", border: "none", borderRadius: "6px" }}
-              >
+              <button type="submit" disabled={addingStaff} className="admin-btn-primary">
                 {addingStaff ? "Adding…" : "Add to roster"}
               </button>
             </form>
           )}
-        </section>
+        </div>
 
-        <section>
-          <h2 style={{ fontSize: "16px", marginBottom: "10px" }}>Task assignments</h2>
-          <div style={{ border: "1px solid var(--border)", borderRadius: "var(--radius)", padding: "4px 14px", marginBottom: "14px" }}>
+        <div>
+          <div className="admin-form-panel" style={{ marginBottom: 14 }}>
+            <p className="admin-section-title">Task assignments</p>
             {tasks.map((t, i) => (
-              <div
-                key={t.id}
-                style={{
-                  display: "flex",
-                  alignItems: "flex-start",
-                  gap: "8px",
-                  padding: "9px 0",
-                  borderBottom: i < tasks.length - 1 ? "1px solid var(--border)" : "none"
-                }}
-              >
+              <div key={t.id} style={{ display: "flex", gap: 8, padding: "8px 0", borderBottom: i < tasks.length - 1 ? "1px solid var(--a-border)" : "none" }}>
                 <button
                   onClick={() => toggleTask(t)}
-                  style={{ border: "none", background: "none", cursor: "pointer", padding: 0, fontSize: "13px", color: t.done ? "#2c5c26" : "var(--text-muted)" }}
+                  className="admin-link-btn"
+                  style={{ fontSize: 13, color: t.done ? "var(--a-success-text)" : "var(--a-text-muted)" }}
                   aria-label={t.done ? "Mark not done" : "Mark done"}
                 >
                   {t.done ? "✓" : "○"}
                 </button>
-
                 {editingTaskId === t.id ? (
                   <div style={{ flex: 1 }}>
-                    <input
-                      value={taskDraft.description}
-                      onChange={(e) => setTaskDraft({ ...taskDraft, description: e.target.value })}
-                      style={{ width: "100%", boxSizing: "border-box", fontSize: "12px", padding: "4px 6px", border: "1px solid var(--border)", borderRadius: "4px", marginBottom: "4px" }}
-                    />
-                    <div style={{ display: "flex", gap: "4px", marginBottom: "4px" }}>
-                      <select
-                        value={taskDraft.assignedTo}
-                        onChange={(e) => setTaskDraft({ ...taskDraft, assignedTo: e.target.value })}
-                        style={{ flex: 1, fontSize: "12px", padding: "4px 6px", border: "1px solid var(--border)", borderRadius: "4px" }}
-                      >
-                        {staff.map((s) => (
-                          <option key={s.id} value={s.name}>{s.name}</option>
-                        ))}
+                    <input value={taskDraft.description} onChange={(e) => setTaskDraft({ ...taskDraft, description: e.target.value })} className="admin-inline-input" style={{ width: "100%", boxSizing: "border-box", marginBottom: 4 }} />
+                    <div style={{ display: "flex", gap: 4, marginBottom: 4 }}>
+                      <select value={taskDraft.assignedTo} onChange={(e) => setTaskDraft({ ...taskDraft, assignedTo: e.target.value })} className="admin-inline-input" style={{ flex: 1 }}>
+                        {staff.map((s) => <option key={s.id} value={s.name}>{s.name}</option>)}
                       </select>
-                      <input
-                        value={taskDraft.due}
-                        onChange={(e) => setTaskDraft({ ...taskDraft, due: e.target.value })}
-                        placeholder="Due"
-                        style={{ width: "80px", fontSize: "12px", padding: "4px 6px", border: "1px solid var(--border)", borderRadius: "4px" }}
-                      />
+                      <input value={taskDraft.due} onChange={(e) => setTaskDraft({ ...taskDraft, due: e.target.value })} placeholder="Due" className="admin-inline-input" style={{ width: 80 }} />
                     </div>
-                    <button onClick={() => saveTaskEdit(t.id)} style={{ fontSize: "11px", border: "none", background: "none", color: "var(--green)", cursor: "pointer" }}>Save</button>
-                    <button onClick={() => setEditingTaskId(null)} style={{ fontSize: "11px", border: "none", background: "none", color: "var(--text-muted)", cursor: "pointer", marginLeft: "8px" }}>Cancel</button>
+                    <button onClick={() => saveTaskEdit(t.id)} className="admin-link-btn">Save</button>
+                    <button onClick={() => setEditingTaskId(null)} className="admin-link-btn muted" style={{ marginLeft: 8 }}>Cancel</button>
                   </div>
                 ) : (
                   <div style={{ flex: 1 }}>
-                    <p
-                      style={{
-                        margin: 0,
-                        fontSize: "13px",
-                        textDecoration: t.done ? "line-through" : "none",
-                        color: t.done ? "var(--text-muted)" : "var(--text-primary)"
-                      }}
-                    >
+                    <p style={{ margin: 0, fontSize: 13, textDecoration: t.done ? "line-through" : "none", color: t.done ? "var(--a-text-muted)" : "var(--a-text-primary)" }}>
                       {t.description}
                     </p>
-                    <p style={{ margin: "2px 0 0", fontSize: "12px", color: "var(--text-secondary)" }}>
+                    <p style={{ margin: "2px 0 0", fontSize: 11.5, color: "var(--a-text-secondary)" }}>
                       {t.assignedTo} · {t.due}
-                      <button
-                        onClick={() => startTaskEdit(t)}
-                        style={{ marginLeft: "8px", fontSize: "11px", border: "none", background: "none", color: "var(--green)", cursor: "pointer" }}
-                      >
-                        edit
-                      </button>
-                      <button
-                        onClick={() => handleDeleteTask(t)}
-                        style={{ marginLeft: "6px", fontSize: "11px", border: "none", background: "none", color: "var(--red)", cursor: "pointer" }}
-                      >
-                        delete
-                      </button>
+                      <button onClick={() => startTaskEdit(t)} className="admin-link-btn" style={{ marginLeft: 8 }}>edit</button>
+                      <button onClick={() => handleDeleteTask(t)} className="admin-link-btn danger" style={{ marginLeft: 6 }}>delete</button>
                     </p>
                   </div>
                 )}
               </div>
             ))}
-            {tasks.length === 0 && (
-              <p style={{ fontSize: "13px", color: "var(--text-secondary)", padding: "12px 0" }}>No tasks yet.</p>
-            )}
+            {tasks.length === 0 && <p style={{ fontSize: 13, color: "var(--a-text-secondary)", padding: "12px 0" }}>No tasks yet.</p>}
           </div>
 
-          <form onSubmit={handleAddTask} style={{ border: "1px solid var(--border)", borderRadius: "var(--radius)", padding: "12px" }}>
-            <p style={{ margin: "0 0 8px", fontSize: "13px", fontWeight: 500 }}>Assign a task</p>
-            <input
-              type="text"
-              placeholder="Task"
-              value={newTask.description}
-              onChange={(e) => setNewTask({ ...newTask, description: e.target.value })}
-              style={{ width: "100%", boxSizing: "border-box", padding: "7px 9px", fontSize: "12px", border: "1px solid var(--border)", borderRadius: "6px", marginBottom: "8px" }}
-              required
-            />
-            <select
-              value={newTask.assignedTo}
-              onChange={(e) => setNewTask({ ...newTask, assignedTo: e.target.value })}
-              style={{ width: "100%", boxSizing: "border-box", padding: "7px 9px", fontSize: "12px", border: "1px solid var(--border)", borderRadius: "6px", marginBottom: "8px" }}
-              required
-            >
+          <form onSubmit={handleAddTask} className="admin-form-panel">
+            <p className="admin-section-title">Assign a task</p>
+            <input className="admin-search" placeholder="Task" value={newTask.description} onChange={(e) => setNewTask({ ...newTask, description: e.target.value })} style={{ marginBottom: 8 }} required />
+            <select className="admin-search" value={newTask.assignedTo} onChange={(e) => setNewTask({ ...newTask, assignedTo: e.target.value })} style={{ marginBottom: 8 }} required>
               <option value="">Assign to…</option>
-              {staff.map((s) => (
-                <option key={s.id} value={s.name}>{s.name}</option>
-              ))}
+              {staff.map((s) => <option key={s.id} value={s.name}>{s.name}</option>)}
             </select>
-            <input
-              type="text"
-              placeholder="Due (e.g. 4:00 PM)"
-              value={newTask.due}
-              onChange={(e) => setNewTask({ ...newTask, due: e.target.value })}
-              style={{ width: "100%", boxSizing: "border-box", padding: "7px 9px", fontSize: "12px", border: "1px solid var(--border)", borderRadius: "6px", marginBottom: "10px" }}
-            />
-            <button
-              type="submit"
-              style={{ width: "100%", padding: "8px", fontSize: "12px", background: "var(--green)", color: "var(--cream)", border: "none", borderRadius: "6px" }}
-            >
-              Add task
-            </button>
+            <input className="admin-search" placeholder="Due (e.g. 4:00 PM)" value={newTask.due} onChange={(e) => setNewTask({ ...newTask, due: e.target.value })} style={{ marginBottom: 10 }} />
+            <button type="submit" className="admin-btn-primary">Add task</button>
           </form>
-        </section>
+        </div>
       </div>
-    </div>
+
+      <style>{`
+        .admin-section-title { font-size: 14px; font-weight: 500; margin-bottom: 10px; }
+        .admin-two-col { display: grid; grid-template-columns: 1fr; gap: 18px; }
+        @media (min-width: 900px) { .admin-two-col { grid-template-columns: 1.3fr 1fr; } }
+        .admin-avatar {
+          width: 28px; height: 28px; border-radius: 50%; background: var(--a-bg);
+          display: flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 500; flex-shrink: 0;
+        }
+        .admin-search { width: 100%; border: 1px solid var(--a-border); border-radius: 6px; padding: 8px 12px; font-size: 13px; box-sizing: border-box; }
+        .admin-inline-input { font-size: 12px; padding: 3px 6px; border: 1px solid var(--a-border); border-radius: 4px; }
+        .admin-select-sm { border: 1px solid var(--a-border); border-radius: 6px; padding: 5px 8px; font-size: 12px; background: var(--a-panel); }
+        .admin-form-panel { background: var(--a-panel); border: 1px solid var(--a-border); border-radius: var(--a-radius); padding: 16px; }
+        .admin-btn-primary { width: 100%; padding: 10px; background: var(--a-green); color: #fff; border: none; border-radius: 6px; font-size: 13px; }
+        .admin-btn-primary:disabled { background: var(--a-border); color: var(--a-text-muted); }
+        .admin-link-btn { border: none; background: none; color: var(--a-green); cursor: pointer; font-size: 11px; padding: 0; }
+        .admin-link-btn.muted { color: var(--a-text-muted); }
+        .admin-link-btn.danger { color: var(--a-danger-text); }
+      `}</style>
+    </AdminPage>
   );
 }

@@ -1,8 +1,7 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { api } from "../api";
-import MetricCard from "../components/MetricCard";
-import StatusBadge from "../components/StatusBadge";
+import { AdminPage, StatGrid, StatCard, StatusPill, ListPanel, ListRow } from "../components/admin/AdminUI";
 
 const itemsLabel = (items) =>
   items
@@ -43,134 +42,94 @@ export default function Dashboard() {
     }
   };
 
-  if (error) return <p style={{ padding: 28, color: "var(--red)" }}>Couldn't load dashboard: {error}</p>;
-  if (!summary) return <p style={{ padding: 28, color: "var(--text-secondary)" }}>Loading dashboard…</p>;
+  if (error) return <AdminPage title="Dashboard"><p style={{ color: "var(--a-danger-text)" }}>Couldn't load dashboard: {error}</p></AdminPage>;
+  if (!summary) return <AdminPage title="Dashboard"><p style={{ color: "var(--a-text-secondary)" }}>Loading…</p></AdminPage>;
 
   return (
-    <div style={{ padding: "28px", maxWidth: "1100px", margin: "0 auto" }}>
-      <h1 style={{ fontSize: "24px", marginBottom: "4px" }}>Owner dashboard</h1>
-      <p style={{ color: "var(--text-secondary)", fontSize: "14px", marginBottom: "24px" }}>
-        A snapshot of today at GARNERS.
-      </p>
-
-      <div
-        style={{
-          display: "grid",
-          gridTemplateColumns: "repeat(auto-fit, minmax(160px, 1fr))",
-          gap: "14px",
-          marginBottom: "28px"
-        }}
-      >
-        <MetricCard label="Today's revenue" value={`₹${summary.todaysRevenue.toLocaleString()}`} />
-        <MetricCard label="Orders today" value={summary.ordersToday} sub={`${summary.pendingOrders} pending`} />
-        <MetricCard
-          label="Staff on shift"
-          value={summary.staffOnShift}
-          sub={`of ${summary.staffTotal} total`}
-        />
-        <MetricCard
+    <AdminPage eyebrow="A snapshot of today at GARNERS" title="Dashboard">
+      <StatGrid>
+        <StatCard label="Today's revenue" value={`₹${summary.todaysRevenue.toLocaleString()}`} />
+        <StatCard label="Orders today" value={summary.ordersToday} sub={`${summary.pendingOrders} pending`} />
+        <StatCard label="Staff on shift" value={summary.staffOnShift} sub={`of ${summary.staffTotal} total`} />
+        <StatCard
           label="Low stock items"
           value={summary.lowStockCount}
           sub={summary.lowStockCount ? "needs reorder" : "all good"}
-          tone={summary.lowStockCount ? "warning" : "default"}
+          warn={summary.lowStockCount > 0}
         />
-      </div>
+      </StatGrid>
 
-      <div className="split-2col" style={{ display: "grid", gridTemplateColumns: "1.3fr 1fr", gap: "20px" }}>
-        <section>
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "10px" }}>
-            <h2 style={{ fontSize: "16px" }}>Order queue</h2>
-            <Link to="/orders" style={{ fontSize: "12px", color: "var(--green)" }}>View all orders →</Link>
+      <div className="admin-two-col">
+        <div>
+          <div className="admin-section-head">
+            <p className="admin-section-title">Order queue</p>
+            <Link to="/orders" className="admin-view-all">View all orders →</Link>
           </div>
-          <div style={{ border: "1px solid var(--border)", borderRadius: "var(--radius)", overflow: "hidden" }}>
-            {summary.recentOrders.map((o, i) => (
-              <div
-                key={o.id}
-                style={{
-                  display: "flex",
-                  flexWrap: "wrap",
-                  justifyContent: "space-between",
-                  alignItems: "center",
-                  padding: "12px 14px",
-                  background: "var(--surface-1)",
-                  borderBottom: i < summary.recentOrders.length - 1 ? "1px solid var(--border)" : "none",
-                  gap: "10px"
-                }}
-              >
+          <ListPanel>
+            {summary.recentOrders.map((o) => (
+              <ListRow key={o.id}>
                 <div style={{ minWidth: 0, flex: "1 1 200px" }}>
-                  <p style={{ margin: 0, fontSize: "13px" }}>
-                    #{o.id} · {o.customerName}{" "}
-                    <Link to={`/receipt/${o.id}`} style={{ fontSize: "11px", color: "var(--green)" }}>receipt</Link>
+                  <p style={{ margin: 0, fontSize: 13 }}>
+                    #{o.id} · {o.customerName} <Link to={`/receipt/${o.id}`} className="admin-receipt-link">receipt</Link>
                   </p>
-                  <p style={{ margin: "3px 0 0", fontSize: "12px", color: "var(--text-secondary)" }}>
+                  <p style={{ margin: "3px 0 0", fontSize: 11.5, color: "var(--a-text-secondary)" }}>
                     {itemsLabel(o.items)} · {o.pickupTime}
                   </p>
                 </div>
-                <div style={{ display: "flex", alignItems: "center", gap: "6px", flexShrink: 0 }}>
+                <div style={{ display: "flex", alignItems: "center", gap: 6, flexShrink: 0 }}>
                   {o.paymentStatus === "paid" ? (
-                    <span style={{ fontSize: "11px", color: "#2c5c26" }}>paid</span>
+                    <span style={{ fontSize: 11, color: "var(--a-success-text)" }}>paid</span>
                   ) : (
-                    <button
-                      onClick={() => markPaid(o.id)}
-                      disabled={markingId === o.id}
-                      style={{
-                        fontSize: "11px",
-                        padding: "3px 8px",
-                        border: "1px solid var(--border-strong)",
-                        borderRadius: "6px",
-                        background: "var(--surface-1)"
-                      }}
-                    >
+                    <button onClick={() => markPaid(o.id)} disabled={markingId === o.id} className="admin-btn-xs">
                       {markingId === o.id ? "…" : "Mark paid"}
                     </button>
                   )}
                   {o.status === "delivered" || o.status === "cancelled" ? (
-                    <StatusBadge status={o.status} />
+                    <StatusPill status={o.status} />
                   ) : (
                     <select
+                      className="admin-select-sm"
                       value={o.status}
                       onChange={(e) => handleStatusChange(o.id, e.target.value)}
-                      style={{ fontSize: "12px", padding: "4px 6px", border: "1px solid var(--border)", borderRadius: "6px" }}
                     >
-                      {statusOptions.map((s) => (
-                        <option key={s} value={s}>{s}</option>
-                      ))}
+                      {statusOptions.map((s) => <option key={s} value={s}>{s}</option>)}
                     </select>
                   )}
                 </div>
-              </div>
+              </ListRow>
             ))}
-          </div>
-        </section>
-
-        <section>
-          <h2 style={{ fontSize: "16px", marginBottom: "10px" }}>Low stock</h2>
-          <div style={{ border: "1px solid var(--border)", borderRadius: "var(--radius)", overflow: "hidden" }}>
-            {summary.lowStockItems.length === 0 && (
-              <p style={{ padding: "14px", fontSize: "13px", color: "var(--text-secondary)", margin: 0 }}>
-                Everything's stocked.
-              </p>
+            {summary.recentOrders.length === 0 && (
+              <p style={{ padding: 14, fontSize: 13, color: "var(--a-text-secondary)", margin: 0 }}>No recent orders.</p>
             )}
-            {summary.lowStockItems.map((item, i) => (
-              <div
-                key={item.id}
-                style={{
-                  display: "flex",
-                  justifyContent: "space-between",
-                  padding: "10px 14px",
-                  background: "var(--surface-1)",
-                  borderBottom: i < summary.lowStockItems.length - 1 ? "1px solid var(--border)" : "none"
-                }}
-              >
-                <span style={{ fontSize: "13px" }}>{item.name}</span>
-                <span style={{ fontSize: "12px", color: "var(--red)" }}>
-                  {item.quantity} {item.unit} left
-                </span>
-              </div>
+          </ListPanel>
+        </div>
+
+        <div>
+          <p className="admin-section-title">Low stock</p>
+          <ListPanel>
+            {summary.lowStockItems.length === 0 && (
+              <p style={{ padding: 14, fontSize: 13, color: "var(--a-text-secondary)", margin: 0 }}>Everything's stocked.</p>
+            )}
+            {summary.lowStockItems.map((item) => (
+              <ListRow key={item.id}>
+                <p style={{ margin: 0, fontSize: 13 }}>{item.name}</p>
+                <span style={{ fontSize: 12, color: "var(--a-danger-text)" }}>{item.quantity} {item.unit} left</span>
+              </ListRow>
             ))}
-          </div>
-        </section>
+          </ListPanel>
+        </div>
       </div>
-    </div>
+
+      <style>{`
+        .admin-section-title { font-size: 14px; font-weight: 500; margin-bottom: 10px; }
+        .admin-section-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; gap: 8px; flex-wrap: wrap; }
+        .admin-view-all { font-size: 12px; color: var(--a-green); text-decoration: none; }
+        .admin-receipt-link { font-size: 11px; color: var(--a-green); }
+        .admin-two-col { display: grid; grid-template-columns: 1fr; gap: 18px; }
+        @media (min-width: 900px) { .admin-two-col { grid-template-columns: 1.3fr 1fr; } }
+        .admin-btn-xs { font-size: 11px; padding: 3px 8px; border: 1px solid var(--a-border); border-radius: 6px; background: var(--a-panel); }
+        .admin-select-sm { border: 1px solid var(--a-border); border-radius: 6px; padding: 5px 8px; font-size: 12px; background: var(--a-panel); }
+      `}</style>
+    </AdminPage>
   );
 }
