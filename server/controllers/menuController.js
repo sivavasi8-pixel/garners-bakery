@@ -66,6 +66,16 @@ exports.updateAvailability = asyncHandler(async (req, res) => {
   res.json({ item });
 });
 
+exports.updateSpecial = asyncHandler(async (req, res) => {
+  const { isSpecial } = req.body;
+  if (typeof isSpecial !== "boolean") {
+    return res.status(400).json({ error: "isSpecial must be a boolean" });
+  }
+  const item = await menuItems.setSpecial(req.params.id, isSpecial);
+  if (!item) return res.status(404).json({ error: "Item not found" });
+  res.json({ item });
+});
+
 exports.getRecipe = asyncHandler(async (req, res) => {
   res.json({ ingredients: await recipes.getForMenuItemDetailed(req.params.id) });
 });

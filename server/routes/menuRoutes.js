@@ -19,7 +19,10 @@ router.delete("/:id", requireAuth, requireRole("owner"), menuController.deleteIt
 router.get("/:id/recipe", requireAuth, requireRole("owner"), menuController.getRecipe);
 router.put("/:id/recipe", requireAuth, requireRole("owner"), menuController.updateRecipe);
 
-// Marking something sold out is a floor-operations action, not a catalog edit — owner+staff.
+// Marking something sold out (or today's special) is a floor-operations action,
+// not a catalog edit — owner+staff, same as availability. Creating a brand-new
+// item (including a "special"-category one) stays owner-only, above.
 router.patch("/:id/availability", requireAuth, requireRole("owner", "staff"), menuController.updateAvailability);
+router.patch("/:id/special", requireAuth, requireRole("owner", "staff"), menuController.updateSpecial);
 
 module.exports = router;

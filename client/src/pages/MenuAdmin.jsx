@@ -2,6 +2,9 @@ import { useEffect, useState } from "react";
 import { api } from "../api";
 
 const categories = ["breads", "cookies", "pastries", "cakes", "custom"];
+// Rendered with a distinct label so it's clear this isn't a normal browsing category —
+// items here only ever show in the customer-facing "Today's Specials" strip.
+const specialCategory = { value: "special", label: "⭐ Today's special (not on regular menu)" };
 
 const emptyForm = { name: "", category: "breads", price: "", unit: "", description: "" };
 
@@ -211,6 +214,15 @@ export default function MenuAdmin() {
     }
   };
 
+  const toggleSpecial = async (item) => {
+    try {
+      await api.updateMenuSpecial(item.id, !item.isSpecial);
+      await load();
+    } catch (err) {
+      setError(err.message);
+    }
+  };
+
   if (error) return <p style={{ padding: 28, color: "var(--red)" }}>Couldn't load menu: {error}</p>;
   if (!items || !inventory) return <p style={{ padding: 28, color: "var(--text-secondary)" }}>Loading menu…</p>;
 
@@ -258,11 +270,28 @@ export default function MenuAdmin() {
                     {!item.inStock && (
                       <span style={{ marginLeft: "8px", fontSize: "11px", color: "var(--red)" }}>Sold out</span>
                     )}
+                    {item.isSpecial && (
+                      <span style={{ marginLeft: "8px", fontSize: "11px", color: "#7a5c1f" }}>★ Today's special</span>
+                    )}
                   </p>
                   <p style={{ margin: "3px 0 0", fontSize: "12px", color: "var(--text-secondary)" }}>
                     {item.category} · {item.price ? `₹${item.price}` : "made to order"} / {item.unit}
                   </p>
                 </div>
+                <button
+                  onClick={() => toggleSpecial(item)}
+                  style={{
+                    padding: "5px 12px",
+                    fontSize: "12px",
+                    border: `1px solid ${item.isSpecial ? "var(--gold)" : "var(--border-strong)"}`,
+                    borderRadius: "6px",
+                    background: item.isSpecial ? "#fbf1dd" : "var(--surface-1)",
+                    color: item.isSpecial ? "#7a5c1f" : "var(--text-primary)",
+                    fontWeight: item.isSpecial ? 600 : 400
+                  }}
+                >
+                  {item.isSpecial ? "★ Remove special" : "☆ Mark as today's special"}
+                </button>
                 <button
                   onClick={() => toggleAvailability(item)}
                   style={{
@@ -348,7 +377,13 @@ export default function MenuAdmin() {
             {categories.map((c) => (
               <option key={c} value={c}>{c}</option>
             ))}
+            <option value={specialCategory.value}>{specialCategory.label}</option>
           </select>
+          {form.category === specialCategory.value && (
+            <p className="note" style={{ fontSize: "11px", color: "var(--text-secondary)", background: "var(--surface-2)", border: "1px solid var(--border)", borderRadius: "8px", padding: "8px 10px", marginTop: "-4px", marginBottom: "10px" }}>
+              This item won't appear in Breads/Cookies/Cakes — only in "Today's Specials" on the Order page, and only until end of day.
+            </p>
+          )}
           <input
             type="number"
             step="0.01"

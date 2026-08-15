@@ -38,7 +38,9 @@ create table if not exists menu_items (
   in_stock boolean not null default true,
   description text,
   image_data bytea, -- uploaded via the owner's Menu admin page, stored in the DB (not on disk)
-  image_mime text
+  image_mime text,
+  is_special boolean not null default false, -- "Today's Special" — see menuItems.js for how it auto-expires
+  special_until timestamptz
 );
 
 create table if not exists inventory (

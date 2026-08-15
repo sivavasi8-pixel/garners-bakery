@@ -3,6 +3,17 @@
 // not on local disk, so they persist the same way the rest of the data does.
 const pool = require("../config/db");
 
+// "special" is a menu category like any other, except it's deliberately left out
+// of the customer-facing category tabs (Breads/Cookies/Cakes/Custom) — it only
+// ever shows in the Today's Specials strip. See Order.jsx / MenuAdmin.jsx.
+const SPECIAL_CATEGORY = "special";
+
+// live-computed, not trusted from the stored flag alone — a "special" from
+// yesterday that nobody manually cleared should stop counting on its own,
+// without needing a cron job to flip the boolean at midnight.
+const isCurrentlySpecial = (row) =>
+  row.is_special && (!row.special_until || new Date(row.special_until) > new Date());
+
 const mapRow = (row) =>
   row && {
     id: row.id,
@@ -12,7 +23,9 @@ const mapRow = (row) =>
     unit: row.unit,
     inStock: row.in_stock,
     description: row.description,
-    imageUrl: row.image_data ? `/api/menu/${row.id}/image` : null
+    imageUrl: row.image_data ? `/api/menu/${row.id}/image` : null,
+    isSpecial: isCurrentlySpecial(row),
+    specialUntil: row.special_until
   };
 
 module.exports = {
@@ -35,10 +48,15 @@ module.exports = {
     return { data: row.image_data, mime: row.image_mime };
   },
   create: async ({ name, category, price, unit, description, image }) => {
+    // A brand-new "special"-category dish is, by definition, today's special the
+    // moment it's created — no separate toggle step needed right after adding it.
+    const isSpecialCategory = category === SPECIAL_CATEGORY;
     const { rows } = await pool.query(
-      `insert into menu_items (name, category, price, unit, description, image_data, image_mime)
-       values ($1, $2, $3, $4, $5, $6, $7) returning *`,
-      [name, category, price ?? null, unit, description ?? null, image?.data ?? null, image?.mime ?? null]
+      `insert into menu_items (name, category, price, unit, description, image_data, image_mime, is_special, special_until)
+       values ($1, $2, $3, $4, $5, $6, $7, $8,
+         case when $8 then date_trunc('day', now()) + interval '1 day' - interval '1 second' else null end)
+       returning *`,
+      [name, category, price ?? null, unit, description ?? null, image?.data ?? null, image?.mime ?? null, isSpecialCategory]
     );
     return mapRow(rows[0]);
   },
@@ -62,6 +80,17 @@ module.exports = {
       inStock,
       Number(id)
     ]);
+    return mapRow(rows[0]);
+  },
+  // Flips "today's special" on (expiring end of today, server clock) or off.
+  setSpecial: async (id, isSpecial) => {
+    const { rows } = await pool.query(
+      `update menu_items set
+         is_special = $1,
+         special_until = case when $1 then date_trunc('day', now()) + interval '1 day' - interval '1 second' else null end
+       where id = $2 returning *`,
+      [isSpecial, Number(id)]
+    );
     return mapRow(rows[0]);
   }
 };

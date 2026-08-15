@@ -162,6 +162,7 @@ export default function Order() {
 
   const shown = menu.filter((m) => m.category === activeCategory);
   const customCakeItem = menu.find((m) => m.category === "custom");
+  const specials = menu.filter((m) => m.isSpecial);
 
   return (
     <div style={{ padding: "28px", maxWidth: "1100px", margin: "0 auto" }}>
@@ -169,6 +170,90 @@ export default function Order() {
       <p style={{ color: "var(--text-secondary)", fontSize: "14px", marginBottom: "20px" }}>
         Store pick up · oven fresh daily bakes.
       </p>
+
+      {specials.length > 0 && (
+        <div style={{ marginBottom: "24px" }}>
+          <div style={{ display: "flex", alignItems: "baseline", gap: "8px", marginBottom: "10px" }}>
+            <h2 style={{ fontSize: "15px" }}>✨ Today's Specials</h2>
+            <span style={{ fontSize: "11.5px", color: "var(--text-secondary)" }}>Fresh picks, today only</span>
+          </div>
+          <div
+            style={{
+              display: "grid",
+              gridTemplateColumns: "repeat(auto-fit, minmax(150px, 1fr))",
+              gap: "12px"
+            }}
+          >
+            {specials.map((item) => (
+              <div
+                key={item.id}
+                style={{
+                  position: "relative",
+                  overflow: "hidden",
+                  border: "1.5px solid var(--kraft)",
+                  borderRadius: "var(--radius-lg)",
+                  padding: "12px",
+                  background: "var(--surface-1)"
+                }}
+              >
+                <span
+                  style={{
+                    position: "absolute",
+                    top: "10px",
+                    right: "-28px",
+                    background: "var(--kraft)",
+                    color: "var(--charcoal)",
+                    fontSize: "9.5px",
+                    fontWeight: 700,
+                    letterSpacing: "0.03em",
+                    padding: "3px 30px",
+                    transform: "rotate(35deg)",
+                    textTransform: "uppercase"
+                  }}
+                >
+                  Today only
+                </span>
+                {item.imageUrl ? (
+                  <img
+                    src={item.imageUrl}
+                    alt={item.name}
+                    style={{ width: "100%", height: 68, borderRadius: "9px", marginBottom: "9px", objectFit: "cover" }}
+                  />
+                ) : (
+                  <div style={{ width: "100%", height: 68, borderRadius: "9px", marginBottom: "9px", background: "var(--surface-2)" }} />
+                )}
+                <p style={{ margin: 0, fontSize: "13px", fontWeight: 600 }}>{item.name}</p>
+                <p style={{ margin: "3px 0 0", fontSize: "11.5px", color: "var(--text-secondary)", minHeight: "30px" }}>
+                  {item.description}
+                </p>
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: "9px" }}>
+                  <span style={{ fontSize: "13px", fontWeight: 600 }}>
+                    {item.price ? `₹${item.price}` : "made to order"}
+                  </span>
+                  {!item.inStock ? (
+                    <span style={{ fontSize: "11px", color: "var(--red)" }}>Sold out</span>
+                  ) : (
+                    item.price && (
+                      <button
+                        onClick={() => addToCart(item)}
+                        style={{
+                          padding: "5px 11px",
+                          fontSize: "11px",
+                          border: "1px solid var(--wood)",
+                          borderRadius: "6px",
+                          background: "var(--surface-1)"
+                        }}
+                      >
+                        Add
+                      </button>
+                    )
+                  )}
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
       <div style={{ display: "flex", gap: "8px", marginBottom: "20px", flexWrap: "wrap" }}>
         {categories.map((c) => (

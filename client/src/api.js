@@ -37,6 +37,8 @@ export const api = {
   deleteMenuItem: (id) => request(`/menu/${id}`, { method: "DELETE" }),
   updateMenuAvailability: (id, inStock) =>
     request(`/menu/${id}/availability`, { method: "PATCH", body: JSON.stringify({ inStock }) }),
+  updateMenuSpecial: (id, isSpecial) =>
+    request(`/menu/${id}/special`, { method: "PATCH", body: JSON.stringify({ isSpecial }) }),
 
   getOrders: () => request("/orders"),
   getMyOrders: () => request("/orders/mine"),
