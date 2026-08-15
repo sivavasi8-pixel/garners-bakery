@@ -1,8 +1,10 @@
 import { NavLink, Outlet, useNavigate } from "react-router-dom";
 import { useAuth } from "../auth/AuthContext";
+import { useCart } from "../cart/CartContext";
 
 export default function CustomerNav() {
   const { user, logout } = useAuth();
+  const { count: cartCount } = useCart();
   const navigate = useNavigate();
 
   const handleLogout = () => {
@@ -29,7 +31,10 @@ export default function CustomerNav() {
           </div>
 
           <nav className="topbar-nav">
-            <NavLink to="/order" className={({ isActive }) => `topbar-link${isActive ? " active" : ""}`}>Order online</NavLink>
+            <NavLink to="/order" className={({ isActive }) => `topbar-link${isActive ? " active" : ""}`}>
+              Order online
+              {cartCount > 0 && <span className="topbar-cart-badge">{cartCount}</span>}
+            </NavLink>
             {user?.role === "customer" && (
               <NavLink to="/my-orders" className={({ isActive }) => `topbar-link${isActive ? " active" : ""}`}>My orders</NavLink>
             )}
@@ -59,7 +64,10 @@ export default function CustomerNav() {
             to={tab.to}
             className={({ isActive }) => `tabbar-item${isActive ? " active" : ""}`}
           >
-            <i className={`ti ${tab.iconClass}`} aria-hidden="true" />
+            <span className="tabbar-icon-wrap">
+              <i className={`ti ${tab.iconClass}`} aria-hidden="true" />
+              {tab.to === "/order" && cartCount > 0 && <span className="tabbar-cart-badge">{cartCount}</span>}
+            </span>
             <span>{tab.label}</span>
           </NavLink>
         ))}
@@ -117,6 +125,12 @@ export default function CustomerNav() {
           text-decoration: none; color: rgba(250,248,243,0.75);
         }
         .topbar-link.active { color: var(--cream); background: rgba(250,248,243,0.12); }
+        .topbar-cart-badge {
+          display: inline-flex; align-items: center; justify-content: center;
+          min-width: 16px; height: 16px; padding: 0 4px; margin-left: 6px;
+          background: var(--gold); color: var(--green-dark); border-radius: 999px;
+          font-size: 10px; font-weight: 700; vertical-align: 2px;
+        }
 
         .topbar-right { display: none; align-items: center; gap: 10px; }
         .topbar-user { font-size: 13px; opacity: 0.85; }
@@ -152,6 +166,12 @@ export default function CustomerNav() {
         }
         .tabbar-item i { font-size: 20px; }
         .tabbar-item.active { color: var(--green); }
+        .tabbar-icon-wrap { position: relative; display: inline-flex; }
+        .tabbar-cart-badge {
+          position: absolute; top: -4px; right: -8px; min-width: 14px; height: 14px; padding: 0 3px;
+          background: var(--red); color: #fff; border-radius: 999px; font-size: 9px; font-weight: 700;
+          display: flex; align-items: center; justify-content: center;
+        }
 
         @media (min-width: 720px) {
           .tabbar { display: none; }

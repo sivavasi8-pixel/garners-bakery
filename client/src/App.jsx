@@ -2,6 +2,7 @@ import { Routes, Route } from "react-router-dom";
 import CustomerNav from "./components/CustomerNav";
 import AdminLayout from "./components/admin/AdminLayout";
 import ProtectedRoute from "./auth/ProtectedRoute";
+import { CartProvider } from "./cart/CartContext";
 import Dashboard from "./pages/Dashboard";
 import Inventory from "./pages/Inventory";
 import Staff from "./pages/Staff";
@@ -21,7 +22,7 @@ export default function App() {
       {/* Customer storefront shell: warm retail look (CustomerNav + theme.css).
           Browsing the menu stays public; Order.jsx itself gates checkout on
           being logged in as a customer. */}
-      <Route element={<CustomerNav />}>
+      <Route element={<CartProvider><CustomerNav /></CartProvider>}>
         <Route path="/order" element={<Order />} />
         <Route
           path="/my-orders"

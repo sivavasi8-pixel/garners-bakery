@@ -2,12 +2,13 @@ import { useEffect, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import { api } from "../api";
 import { useAuth } from "../auth/AuthContext";
+import { useCart } from "../cart/CartContext";
 
 const categories = [
-  { id: "breads", label: "Breads" },
-  { id: "cookies", label: "Cookies" },
-  { id: "cakes", label: "Cakes" },
-  { id: "custom", label: "Custom order" }
+  { id: "breads", label: "Breads", icon: "🍞", tone: "ph-bread" },
+  { id: "cookies", label: "Cookies", icon: "🍪", tone: "ph-cookie" },
+  { id: "cakes", label: "Cakes", icon: "🎂", tone: "ph-cake" },
+  { id: "custom", label: "Custom order", icon: "✏️", tone: "ph-custom" }
 ];
 
 const paymentOptions = [
@@ -15,6 +16,20 @@ const paymentOptions = [
   { id: "upi", label: "UPI" },
   { id: "card", label: "Card" }
 ];
+
+const FAVORITES_KEY = "garners_favorites";
+// Browser-local only — no account, no server round-trip. A real per-customer
+// favorites list would need a backend table + endpoints; this is the
+// frontend-only version of that idea, explicitly scoped that way for now.
+const loadFavorites = () => {
+  try {
+    return new Set(JSON.parse(localStorage.getItem(FAVORITES_KEY) || "[]"));
+  } catch {
+    return new Set();
+  }
+};
+
+const ACTIVE_STATUSES = ["placed", "baking", "ready"];
 
 function CustomCakeForm({ pricePerKg, onAdd }) {
   const [size, setSize] = useState("1");
@@ -72,17 +87,56 @@ function CustomCakeForm({ pricePerKg, onAdd }) {
   );
 }
 
+function ProductCard({ item, isFav, onToggleFav, onAdd }) {
+  return (
+    <div className={`product-card${!item.inStock ? " product-card-out" : ""}`}>
+      <div className="product-photo-wrap">
+        {item.imageUrl ? (
+          <img src={item.imageUrl} alt={item.name} className="product-photo" />
+        ) : (
+          <div className="product-photo product-photo-empty">🍞</div>
+        )}
+        <button
+          className={`fav-btn${isFav ? " on" : ""}`}
+          onClick={() => onToggleFav(item.id)}
+          aria-label={isFav ? "Remove from favorites" : "Add to favorites"}
+          aria-pressed={isFav}
+        >
+          ♥
+        </button>
+      </div>
+      <div className="product-body">
+        <p className="product-name">{item.name}</p>
+        <p className="product-desc">{item.description}</p>
+        <div className="product-footer">
+          <span className="product-price">{item.price ? `₹${item.price}` : "made to order"}</span>
+          {!item.inStock ? (
+            <span className="sold-out">Sold out</span>
+          ) : (
+            item.price && (
+              <button onClick={() => onAdd(item)} className="btn-add">Add</button>
+            )
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export default function Order() {
   const [menu, setMenu] = useState(null);
   const [activeCategory, setActiveCategory] = useState("breads");
-  const [cart, setCart] = useState([]);
+  const [search, setSearch] = useState("");
   const [error, setError] = useState(null);
   const [pickupTime, setPickupTime] = useState("");
   const [paymentMethod, setPaymentMethod] = useState("cash");
   const [placing, setPlacing] = useState(false);
   const [placedOrder, setPlacedOrder] = useState(null);
   const [checkoutError, setCheckoutError] = useState(null);
+  const [activeOrder, setActiveOrder] = useState(null);
+  const [favorites, setFavorites] = useState(loadFavorites);
   const { user } = useAuth();
+  const { cart, addToCart, addCustomItem, clearCart, total, count: cartCount } = useCart();
   const canOrder = user && user.role === "customer";
   const cartRef = useRef(null);
 
@@ -90,33 +144,37 @@ export default function Order() {
     api.getMenu().then((d) => setMenu(d.items)).catch((e) => setError(e.message));
   }, []);
 
-  const addToCart = (item) => {
-    setCart((prev) => {
-      const existing = prev.find((c) => c.id === item.id);
-      if (existing) {
-        return prev.map((c) => (c.id === item.id ? { ...c, qty: c.qty + 1 } : c));
-      }
-      return [...prev, { ...item, qty: 1, menuItemId: item.id }];
+  useEffect(() => {
+    if (!canOrder) {
+      setActiveOrder(null);
+      return;
+    }
+    api
+      .getMyOrders()
+      .then((d) => setActiveOrder(d.orders.find((o) => ACTIVE_STATUSES.includes(o.status)) || null))
+      .catch(() => {}); // the tracker is a nice-to-have — a failed fetch shouldn't block browsing
+  }, [canOrder]);
+
+  const toggleFavorite = (id) => {
+    setFavorites((prev) => {
+      const next = new Set(prev);
+      next.has(id) ? next.delete(id) : next.add(id);
+      localStorage.setItem(FAVORITES_KEY, JSON.stringify([...next]));
+      return next;
     });
   };
 
   const addCustomCake = (customItemId) => ({ size, flavor, message, neededBy, price }) => {
     const note = [message, neededBy ? `Needed by ${neededBy}` : null].filter(Boolean).join(" — ");
-    setCart((prev) => [
-      ...prev,
-      {
-        id: `custom-${Date.now()}`,
-        menuItemId: customItemId,
-        name: `Custom cake — ${flavor}, ${size}kg`,
-        price,
-        qty: 1,
-        note
-      }
-    ]);
+    addCustomItem({
+      id: `custom-${Date.now()}`,
+      menuItemId: customItemId,
+      name: `Custom cake — ${flavor}, ${size}kg`,
+      price,
+      qty: 1,
+      note
+    });
   };
-
-  const total = cart.reduce((sum, c) => sum + (c.price || 0) * c.qty, 0);
-  const cartCount = cart.reduce((n, c) => n + c.qty, 0);
 
   const handleCheckout = async () => {
     setCheckoutError(null);
@@ -130,7 +188,8 @@ export default function Order() {
         paymentMethod
       });
       setPlacedOrder(order.order);
-      setCart([]);
+      setActiveOrder(order.order);
+      clearCart();
       setPickupTime("");
     } catch (err) {
       setCheckoutError(err.message);
@@ -144,16 +203,52 @@ export default function Order() {
   if (error) return <p style={{ padding: 28, color: "var(--red)" }}>Couldn't load menu: {error}</p>;
   if (!menu) return <p style={{ padding: 28, color: "var(--text-secondary)" }}>Loading menu…</p>;
 
-  const shown = menu.filter((m) => m.category === activeCategory);
+  const q = search.trim().toLowerCase();
+  const searchable = menu.filter((m) => m.category !== "custom" && m.category !== "special");
+  const shown = q ? searchable.filter((m) => m.name.toLowerCase().includes(q)) : menu.filter((m) => m.category === activeCategory);
   const customCakeItem = menu.find((m) => m.category === "custom");
   const specials = menu.filter((m) => m.isSpecial);
 
+  const selectCategory = (id) => {
+    setSearch("");
+    setActiveCategory(id);
+  };
+
   return (
     <div className="page order-page">
-      <p className="eyebrow">Store pick up · oven fresh daily bakes</p>
-      <h1 className="page-title">Order online</h1>
+      <div className="hero">
+        <div className="hero-copy">
+          <span className="hero-eyebrow">✨ Baked daily</span>
+          <h1 className="hero-title">Oven-fresh, baked daily</h1>
+          <p className="hero-sub">Store pick up · oven fresh daily bakes</p>
+        </div>
+      </div>
 
-      {specials.length > 0 && (
+      {activeOrder && (
+        <Link to={`/receipt/${activeOrder.id}`} className="tracker">
+          <span className="tracker-dot" />
+          <span className="tracker-body">
+            <span className="tracker-title">Order #{activeOrder.id} · {activeOrder.status}</span>
+            <span className="tracker-meta">
+              {activeOrder.items.length} item{activeOrder.items.length === 1 ? "" : "s"} · pickup {activeOrder.pickupTime}
+            </span>
+          </span>
+          <span className="tracker-chevron">›</span>
+        </Link>
+      )}
+
+      <div className="search-wrap">
+        <span className="search-icon">🔍</span>
+        <input
+          className="search-input"
+          type="text"
+          placeholder="Search the menu…"
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+        />
+      </div>
+
+      {specials.length > 0 && !q && (
         <div className="specials-section">
           <div className="specials-heading">
             <h2>✨ Today's Specials</h2>
@@ -190,16 +285,17 @@ export default function Order() {
         {categories.map((c) => (
           <button
             key={c.id}
-            onClick={() => setActiveCategory(c.id)}
-            className={`chip${activeCategory === c.id ? " chip-active" : ""}`}
+            onClick={() => selectCategory(c.id)}
+            className={`chip${!q && activeCategory === c.id ? " chip-active" : ""}`}
           >
+            <span className={`chip-thumb ${c.tone}`}>{c.icon}</span>
             {c.label}
           </button>
         ))}
       </div>
 
       <div className="order-layout">
-        {activeCategory === "custom" ? (
+        {!q && activeCategory === "custom" ? (
           customCakeItem ? (
             <CustomCakeForm pricePerKg={customCakeItem.price} onAdd={addCustomCake(customCakeItem.id)} />
           ) : (
@@ -208,30 +304,16 @@ export default function Order() {
         ) : (
           <div className="product-grid">
             {shown.map((item) => (
-              <div key={item.id} className={`product-card${!item.inStock ? " product-card-out" : ""}`}>
-                {item.imageUrl ? (
-                  <img src={item.imageUrl} alt={item.name} className="product-photo" />
-                ) : (
-                  <div className="product-photo product-photo-empty">🍞</div>
-                )}
-                <div className="product-body">
-                  <p className="product-name">{item.name}</p>
-                  <p className="product-desc">{item.description}</p>
-                  <div className="product-footer">
-                    <span className="product-price">{item.price ? `₹${item.price}` : "made to order"}</span>
-                    {!item.inStock ? (
-                      <span className="sold-out">Sold out</span>
-                    ) : (
-                      item.price && (
-                        <button onClick={() => addToCart(item)} className="btn-add">Add</button>
-                      )
-                    )}
-                  </div>
-                </div>
-              </div>
+              <ProductCard
+                key={item.id}
+                item={item}
+                isFav={favorites.has(item.id)}
+                onToggleFav={toggleFavorite}
+                onAdd={addToCart}
+              />
             ))}
             {shown.length === 0 && (
-              <p className="empty-note">Nothing in this category yet.</p>
+              <p className="empty-note">{q ? `Nothing matches "${search}".` : "Nothing in this category yet."}</p>
             )}
           </div>
         )}
@@ -322,8 +404,44 @@ export default function Order() {
       )}
 
       <style>{`
-        .eyebrow { margin: 0 0 4px; font-size: 13px; color: var(--text-secondary); }
-        .page-title { font-size: 24px; margin-bottom: 20px; }
+        .hero {
+          margin-bottom: 16px; border-radius: var(--radius-lg); overflow: hidden; position: relative;
+          min-height: 132px; display: flex; align-items: center;
+          background:
+            radial-gradient(120% 140% at 15% 20%, rgba(184,146,90,0.55), transparent 55%),
+            linear-gradient(120deg, #7a4a26, #3f2a17 60%, #241811);
+        }
+        .hero-copy { position: relative; z-index: 1; padding: 22px 22px; color: var(--cream); }
+        .hero-eyebrow {
+          display: inline-flex; align-items: center; gap: 5px; font-size: 11px; text-transform: uppercase;
+          letter-spacing: 0.07em; background: rgba(250,248,243,0.16); border: 1px solid rgba(250,248,243,0.3);
+          padding: 3px 10px; border-radius: 999px; margin-bottom: 10px;
+        }
+        .hero-title { font-size: 26px; margin: 0 0 5px; line-height: 1.15; color: var(--cream); }
+        .hero-sub { font-size: 12.5px; opacity: 0.85; margin: 0; }
+
+        .tracker {
+          display: flex; align-items: center; gap: 11px; margin-bottom: 16px;
+          background: var(--surface-1); border: 1px solid var(--gold); border-radius: var(--radius);
+          padding: 12px 14px; text-decoration: none; color: var(--text-primary);
+        }
+        .tracker-dot {
+          width: 9px; height: 9px; border-radius: 50%; background: var(--warning-text);
+          flex-shrink: 0; box-shadow: 0 0 0 4px var(--warning-bg);
+        }
+        .tracker-body { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+        .tracker-title { font-size: 13px; font-weight: 600; }
+        .tracker-meta { font-size: 11.5px; color: var(--text-secondary); margin-top: 2px; }
+        .tracker-chevron { font-size: 17px; color: var(--text-muted); flex-shrink: 0; }
+
+        .search-wrap { position: relative; margin-bottom: 20px; }
+        .search-input {
+          width: 100%; box-sizing: border-box; padding: 10px 14px 10px 38px;
+          border-radius: 10px; border: 1px solid var(--border); background: var(--surface-1);
+          font-size: 13.5px; font-family: var(--font-body); color: var(--text-primary);
+        }
+        .search-input::placeholder { color: var(--text-muted); }
+        .search-icon { position: absolute; left: 13px; top: 50%; transform: translateY(-50%); font-size: 13px; opacity: 0.6; }
 
         .specials-section { margin-bottom: 24px; }
         .specials-heading { display: flex; align-items: baseline; gap: 8px; margin-bottom: 10px; }
@@ -351,17 +469,27 @@ export default function Order() {
         }
 
         .category-scroll {
-          display: flex; gap: 8px; overflow-x: auto; padding-bottom: 4px;
+          display: flex; gap: 16px; overflow-x: auto; padding: 2px 2px 6px;
           margin-bottom: 20px; -webkit-overflow-scrolling: touch;
         }
         .category-scroll::-webkit-scrollbar { display: none; }
         .chip {
-          flex-shrink: 0; padding: 8px 16px; border-radius: 8px;
-          border: 1px solid var(--border); font-size: 13px;
-          background: var(--surface-1); color: var(--text-secondary);
-          white-space: nowrap;
+          flex-shrink: 0; display: flex; flex-direction: column; align-items: center; gap: 6px;
+          border: none; background: none; width: 64px; font-size: 11.5px; color: var(--text-secondary);
+          white-space: nowrap; font-weight: 500;
         }
-        .chip-active { background: var(--green); color: var(--cream); border-color: var(--green); }
+        .chip-thumb {
+          width: 56px; height: 56px; border-radius: 50%; border: 2px solid transparent;
+          display: flex; align-items: center; justify-content: center; font-size: 24px;
+          transition: border-color .12s ease, transform .12s ease;
+        }
+        .chip-active { color: var(--charcoal); font-weight: 700; }
+        .chip-active .chip-thumb { border-color: var(--gold); transform: scale(1.05); }
+        .chip:active .chip-thumb { transform: scale(0.94); }
+        .ph-bread { background: linear-gradient(135deg,#e6c68f,#c99a5c); }
+        .ph-cookie { background: linear-gradient(135deg,#c9955f,#8f5a2e); }
+        .ph-cake { background: linear-gradient(135deg,#d9c08f,#a97a3d); }
+        .ph-custom { background: linear-gradient(135deg,#e0c5e0,#b88fc9); }
 
         .order-layout { display: block; }
         @media (min-width: 860px) {
@@ -374,22 +502,38 @@ export default function Order() {
 
         .product-card {
           background: var(--surface-1); border: 1px solid var(--border);
-          border-radius: var(--radius-lg); padding: 14px;
+          border-radius: var(--radius-lg); overflow: hidden;
+          transition: transform .14s ease, box-shadow .14s ease, border-color .14s ease;
+        }
+        .product-card:hover, .product-card:focus-within {
+          transform: translateY(-2px); box-shadow: 0 10px 20px -12px rgba(0,0,0,0.25); border-color: var(--border-strong);
         }
         .product-card-out { opacity: 0.6; }
-        .product-photo { width: 100%; height: 70px; border-radius: 8px; margin-bottom: 10px; object-fit: cover; }
+        .product-photo-wrap { position: relative; }
+        .product-photo { width: 100%; height: 112px; object-fit: cover; }
         .product-photo-empty {
-          background: var(--surface-2); display: flex; align-items: center; justify-content: center; font-size: 22px;
+          background: var(--surface-2); display: flex; align-items: center; justify-content: center; font-size: 26px;
         }
+        .fav-btn {
+          position: absolute; right: 7px; top: 7px; width: 26px; height: 26px; border-radius: 50%;
+          background: rgba(255,255,255,0.85); border: none; display: flex; align-items: center; justify-content: center;
+          font-size: 13px; color: var(--text-muted); transition: transform .12s ease, color .12s ease;
+        }
+        .fav-btn.on { color: var(--red); }
+        .fav-btn:active { transform: scale(0.85); }
+        .product-body { padding: 9px 11px 11px; }
         .product-name { margin: 0; font-size: 13px; font-weight: 500; }
         .product-desc { margin: 3px 0 10px; font-size: 12px; color: var(--text-secondary); }
         .product-footer { display: flex; justify-content: space-between; align-items: center; }
         .product-price { font-size: 13px; font-weight: 500; }
         .sold-out { font-size: 12px; color: var(--red); }
         .btn-add {
-          padding: 5px 12px; font-size: 12px; border: 1px solid var(--border-strong);
-          border-radius: 6px; background: var(--surface-1); color: var(--text-primary);
+          padding: 5px 12px; font-size: 12px; font-weight: 600; border: 1px solid var(--green);
+          color: var(--green); border-radius: 999px; background: var(--surface-1);
+          transition: background .12s ease, color .12s ease, transform .1s ease;
         }
+        .btn-add:hover { background: var(--green); color: var(--cream); }
+        .btn-add:active { transform: scale(0.94); }
 
         .empty-note { font-size: 13px; color: var(--text-secondary); padding: 8px 0; }
 
