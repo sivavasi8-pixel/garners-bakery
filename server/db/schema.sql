@@ -40,8 +40,22 @@ create table if not exists menu_items (
   image_data bytea, -- uploaded via the owner's Menu admin page, stored in the DB (not on disk)
   image_mime text,
   is_special boolean not null default false, -- "Today's Special" — see menuItems.js for how it auto-expires
-  special_until timestamptz
+  special_until timestamptz,
+  is_popular boolean not null default false -- owner-curated "Popular" badge, no auto-expiry (unlike is_special)
 );
+
+-- Extra photos beyond the one on menu_items itself (which stays the "cover" image,
+-- used everywhere a single thumbnail is needed). This table is purely additive —
+-- an item with zero rows here just shows its cover image, same as before this existed.
+create table if not exists menu_item_images (
+  id serial primary key,
+  menu_item_id integer not null references menu_items(id) on delete cascade,
+  image_data bytea not null,
+  image_mime text not null,
+  sort_order integer not null default 0,
+  created_at timestamptz not null default now()
+);
+create index if not exists idx_menu_item_images_menu_item_id on menu_item_images(menu_item_id);
 
 create table if not exists inventory (
   id serial primary key,

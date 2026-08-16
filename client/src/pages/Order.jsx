@@ -87,15 +87,48 @@ function CustomCakeForm({ pricePerKg, onAdd }) {
   );
 }
 
+const AUTO_ROTATE_MS = 3200;
+// Auto-play is opt-out for anyone who's told their OS motion makes them
+// uncomfortable — checked once per card, not re-evaluated live, which matches
+// how every other prefers-reduced-motion check in this app already behaves.
+const prefersReducedMotion =
+  typeof window !== "undefined" && window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
+
 function ProductCard({ item, isFav, onToggleFav, onAdd }) {
+  // Cover photo first, then any extra gallery photos — one unified, swipeable set.
+  const photos = item.imageUrl ? [item.imageUrl, ...item.galleryImages] : item.galleryImages;
+  const [photoIndex, setPhotoIndex] = useState(0);
+  const [paused, setPaused] = useState(false);
+  const hasGallery = photos.length > 1;
+  const stepPhoto = (dir) => setPhotoIndex((i) => (i + dir + photos.length) % photos.length);
+
+  // A manual tap counts as "I'm interacting with this" — pause auto-rotate for a
+  // few seconds afterward so it doesn't immediately override what was just chosen.
+  const manualStep = (dir) => {
+    stepPhoto(dir);
+    setPaused(true);
+    setTimeout(() => setPaused(false), AUTO_ROTATE_MS * 2);
+  };
+
+  useEffect(() => {
+    if (!hasGallery || paused || prefersReducedMotion) return;
+    const id = setInterval(() => stepPhoto(1), AUTO_ROTATE_MS);
+    return () => clearInterval(id);
+  }, [hasGallery, paused, photos.length]);
+
   return (
-    <div className={`product-card${!item.inStock ? " product-card-out" : ""}`}>
+    <div
+      className={`product-card${!item.inStock ? " product-card-out" : ""}`}
+      onMouseEnter={() => setPaused(true)}
+      onMouseLeave={() => setPaused(false)}
+    >
       <div className="product-photo-wrap">
-        {item.imageUrl ? (
-          <img src={item.imageUrl} alt={item.name} className="product-photo" />
+        {photos.length > 0 ? (
+          <img src={photos[photoIndex]} alt={item.name} className="product-photo" />
         ) : (
           <div className="product-photo product-photo-empty">🍞</div>
         )}
+        {item.isPopular && <span className="badge-pop">🔥 Popular</span>}
         <button
           className={`fav-btn${isFav ? " on" : ""}`}
           onClick={() => onToggleFav(item.id)}
@@ -104,6 +137,15 @@ function ProductCard({ item, isFav, onToggleFav, onAdd }) {
         >
           ♥
         </button>
+        {hasGallery && (
+          <>
+            <button className="gallery-nav left" onClick={() => manualStep(-1)} aria-label="Previous photo" />
+            <button className="gallery-nav right" onClick={() => manualStep(1)} aria-label="Next photo" />
+            <div className="gallery-dots">
+              {photos.map((_, i) => <span key={i} className={i === photoIndex ? "on" : ""} />)}
+            </div>
+          </>
+        )}
       </div>
       <div className="product-body">
         <p className="product-name">{item.name}</p>
@@ -518,9 +560,25 @@ export default function Order() {
           position: absolute; right: 7px; top: 7px; width: 26px; height: 26px; border-radius: 50%;
           background: rgba(255,255,255,0.85); border: none; display: flex; align-items: center; justify-content: center;
           font-size: 13px; color: var(--text-muted); transition: transform .12s ease, color .12s ease;
+          z-index: 3;
         }
         .fav-btn.on { color: var(--red); }
         .fav-btn:active { transform: scale(0.85); }
+        .badge-pop {
+          position: absolute; left: 7px; top: 7px; z-index: 2; pointer-events: none;
+          background: rgba(38,36,31,0.82); color: #fff; font-size: 10px; font-weight: 700;
+          padding: 3px 8px; border-radius: 999px;
+        }
+        .gallery-nav {
+          position: absolute; top: 24px; bottom: 0; width: 34%; background: none; border: none; padding: 0; z-index: 1;
+        }
+        .gallery-nav.left { left: 0; } .gallery-nav.right { right: 0; }
+        .gallery-dots {
+          position: absolute; left: 0; right: 0; bottom: 6px; display: flex; justify-content: center; gap: 4px;
+          z-index: 2; pointer-events: none;
+        }
+        .gallery-dots span { width: 4px; height: 4px; border-radius: 50%; background: rgba(255,255,255,0.55); }
+        .gallery-dots span.on { background: #fff; width: 11px; border-radius: 3px; }
         .product-body { padding: 9px 11px 11px; }
         .product-name { margin: 0; font-size: 13px; font-weight: 500; }
         .product-desc { margin: 3px 0 10px; font-size: 12px; color: var(--text-secondary); }

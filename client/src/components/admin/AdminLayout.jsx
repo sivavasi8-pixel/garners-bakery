@@ -78,6 +78,17 @@ export default function AdminLayout() {
         .admin-sidebar {
           width: var(--a-sidebar-w); background: var(--a-sidebar); color: #cfd9d3;
           flex-shrink: 0; padding: 16px 10px; display: none; flex-direction: column;
+          /* Pinned to the viewport, not stretched to match a long page (e.g. the
+             full Menu list) — without this, a flex row's default stretch makes
+             the sidebar as tall as its content sibling, and margin-top:auto on
+             the footer pushes Log out/notifications far below the fold.
+             position:fixed rather than sticky — theme.css's global
+             overflow-x:hidden safety net implicitly computes overflow-y to
+             auto on html/body (a CSS spec quirk: setting one overflow axis to
+             non-visible forces the other off "visible" too), which breaks
+             sticky's scroll-container detection here. Fixed sidesteps that
+             entirely; .admin-main below reserves the space with a margin. */
+          position: fixed; top: 0; left: 0; height: 100vh; overflow-y: auto; z-index: 25;
         }
         @media (min-width: 900px) { .admin-sidebar { display: flex; } }
 
@@ -106,6 +117,7 @@ export default function AdminLayout() {
         .admin-sidebar-user span { display: block; color: #7f8c85; font-size: 11px; }
 
         .admin-main { flex: 1; min-width: 0; }
+        @media (min-width: 900px) { .admin-main { margin-left: var(--a-sidebar-w); } }
       `}</style>
     </div>
   );

@@ -76,6 +76,37 @@ exports.updateSpecial = asyncHandler(async (req, res) => {
   res.json({ item });
 });
 
+exports.updatePopular = asyncHandler(async (req, res) => {
+  const { isPopular } = req.body;
+  if (typeof isPopular !== "boolean") {
+    return res.status(400).json({ error: "isPopular must be a boolean" });
+  }
+  const item = await menuItems.setPopular(req.params.id, isPopular);
+  if (!item) return res.status(404).json({ error: "Item not found" });
+  res.json({ item });
+});
+
+exports.getGalleryImage = asyncHandler(async (req, res) => {
+  const image = await menuItems.getGalleryImage(req.params.id, req.params.imageId);
+  if (!image) return res.status(404).end();
+  res.set("Content-Type", image.mime || "application/octet-stream");
+  res.set("Cache-Control", "public, max-age=3600");
+  res.send(image.data);
+});
+
+exports.addGalleryImage = asyncHandler(async (req, res) => {
+  if (!req.file) return res.status(400).json({ error: "image is required" });
+  const item = await menuItems.addGalleryImage(req.params.id, { data: req.file.buffer, mime: req.file.mimetype });
+  if (!item) return res.status(404).json({ error: "Item not found" });
+  res.status(201).json({ item });
+});
+
+exports.deleteGalleryImage = asyncHandler(async (req, res) => {
+  const item = await menuItems.removeGalleryImage(req.params.id, req.params.imageId);
+  if (!item) return res.status(404).json({ error: "Item or photo not found" });
+  res.json({ item });
+});
+
 exports.getRecipe = asyncHandler(async (req, res) => {
   res.json({ ingredients: await recipes.getForMenuItemDetailed(req.params.id) });
 });

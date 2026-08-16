@@ -9,6 +9,7 @@ const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 5 *
 
 router.get("/", menuController.getMenu);
 router.get("/:id/image", menuController.getImage);
+router.get("/:id/images/:imageId", menuController.getGalleryImage);
 router.get("/:id", menuController.getItem);
 
 // Menu management is an owner-only action (see DESIGN.md/product plan: owner has "full control").
@@ -24,5 +25,11 @@ router.put("/:id/recipe", requireAuth, requireRole("owner"), menuController.upda
 // item (including a "special"-category one) stays owner-only, above.
 router.patch("/:id/availability", requireAuth, requireRole("owner", "staff"), menuController.updateAvailability);
 router.patch("/:id/special", requireAuth, requireRole("owner", "staff"), menuController.updateSpecial);
+router.patch("/:id/popular", requireAuth, requireRole("owner", "staff"), menuController.updatePopular);
+
+// Extra gallery photos — same tier as the catalog edit itself (owner-only), since
+// they're part of how an item is presented, not a floor-operations toggle.
+router.post("/:id/images", requireAuth, requireRole("owner"), upload.single("image"), menuController.addGalleryImage);
+router.delete("/:id/images/:imageId", requireAuth, requireRole("owner"), menuController.deleteGalleryImage);
 
 module.exports = router;

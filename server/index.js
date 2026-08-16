@@ -50,8 +50,11 @@ if (fs.existsSync(clientDist)) {
 app.use((req, res) => res.status(404).json({ error: "Not found" }));
 
 // Centralized error handler — catches anything asyncHandler-wrapped controllers pass to next().
+// A handler can opt in to a specific status/message (e.g. a validation error) by
+// setting err.status; anything else stays a generic 500 so internals never leak.
 app.use((err, req, res, next) => {
   console.error(err);
+  if (err.status) return res.status(err.status).json({ error: err.message });
   res.status(500).json({ error: "Something went wrong" });
 });
 

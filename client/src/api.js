@@ -39,6 +39,10 @@ export const api = {
     request(`/menu/${id}/availability`, { method: "PATCH", body: JSON.stringify({ inStock }) }),
   updateMenuSpecial: (id, isSpecial) =>
     request(`/menu/${id}/special`, { method: "PATCH", body: JSON.stringify({ isSpecial }) }),
+  updateMenuPopular: (id, isPopular) =>
+    request(`/menu/${id}/popular`, { method: "PATCH", body: JSON.stringify({ isPopular }) }),
+  addMenuGalleryImage: (id, formData) => request(`/menu/${id}/images`, { method: "POST", body: formData }),
+  deleteMenuGalleryImage: (id, imageId) => request(`/menu/${id}/images/${imageId}`, { method: "DELETE" }),
 
   getOrders: () => request("/orders"),
   getMyOrders: () => request("/orders/mine"),
