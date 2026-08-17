@@ -1,15 +1,23 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import { api } from "../api";
 import { useAuth } from "../auth/AuthContext";
 import { useCart } from "../cart/CartContext";
 
-const categories = [
-  { id: "breads", label: "Breads", icon: "🍞", tone: "ph-bread" },
-  { id: "cookies", label: "Cookies", icon: "🍪", tone: "ph-cookie" },
-  { id: "cakes", label: "Cakes", icon: "🎂", tone: "ph-cake" },
-  { id: "custom", label: "Custom order", icon: "✏️", tone: "ph-custom" }
-];
+// Known categories get a curated label/icon; anything else (including a
+// brand-new category the owner just created in Menu admin) still shows up
+// as a tab automatically, just with a generic icon and its raw name as the
+// label — see the `categories` useMemo below, which derives the actual tab
+// list from real menu data instead of this fixed set.
+const CATEGORY_META = {
+  breads: { label: "Breads", icon: "🍞", tone: "ph-bread" },
+  cookies: { label: "Cookies", icon: "🍪", tone: "ph-cookie" },
+  pastries: { label: "Pastries", icon: "🥐", tone: "ph-cookie" },
+  cakes: { label: "Cakes", icon: "🎂", tone: "ph-cake" },
+  custom: { label: "Custom order", icon: "✏️", tone: "ph-custom" }
+};
+const FALLBACK_CATEGORY_META = { icon: "🧁", tone: "ph-fallback" };
+const BASE_CATEGORY_ORDER = ["breads", "cookies", "pastries", "cakes", "custom"];
 
 const paymentOptions = [
   { id: "cash", label: "Cash on pickup" },
@@ -167,7 +175,7 @@ function ProductCard({ item, isFav, onToggleFav, onAdd }) {
 
 export default function Order() {
   const [menu, setMenu] = useState(null);
-  const [activeCategory, setActiveCategory] = useState("breads");
+  const [activeCategory, setActiveCategory] = useState(null);
   const [search, setSearch] = useState("");
   const [error, setError] = useState(null);
   const [pickupTime, setPickupTime] = useState("");
@@ -196,6 +204,25 @@ export default function Order() {
       .then((d) => setActiveOrder(d.orders.find((o) => ACTIVE_STATUSES.includes(o.status)) || null))
       .catch(() => {}); // the tracker is a nice-to-have — a failed fetch shouldn't block browsing
   }, [canOrder]);
+
+  // Real, current categories only — "special" never becomes a browsable tab
+  // (those items only ever show in the Today's Specials strip above), and a
+  // category with zero items in it right now just doesn't appear yet.
+  const categories = useMemo(() => {
+    if (!menu) return [];
+    const present = new Set(menu.map((m) => m.category));
+    present.delete("special");
+    const ordered = BASE_CATEGORY_ORDER.filter((c) => present.has(c));
+    present.forEach((c) => { if (!ordered.includes(c)) ordered.push(c); });
+    return ordered.map((id) => {
+      const meta = CATEGORY_META[id] || FALLBACK_CATEGORY_META;
+      return { id, label: meta.label || id.charAt(0).toUpperCase() + id.slice(1), icon: meta.icon, tone: meta.tone };
+    });
+  }, [menu]);
+
+  useEffect(() => {
+    if (activeCategory === null && categories.length > 0) setActiveCategory(categories[0].id);
+  }, [categories, activeCategory]);
 
   const toggleFavorite = (id) => {
     setFavorites((prev) => {
@@ -532,6 +559,7 @@ export default function Order() {
         .ph-cookie { background: linear-gradient(135deg,#c9955f,#8f5a2e); }
         .ph-cake { background: linear-gradient(135deg,#d9c08f,#a97a3d); }
         .ph-custom { background: linear-gradient(135deg,#e0c5e0,#b88fc9); }
+        .ph-fallback { background: linear-gradient(135deg,#c9b896,#a08a5f); }
 
         .order-layout { display: block; }
         @media (min-width: 860px) {

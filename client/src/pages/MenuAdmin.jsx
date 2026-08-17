@@ -1,11 +1,15 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { api } from "../api";
 import { AdminPage, ListPanel } from "../components/admin/AdminUI";
 
-const categories = ["breads", "cookies", "pastries", "cakes", "custom"];
+// The known baseline categories, kept in a fixed display order so tabs don't
+// jump around as items are added/removed. Anything else (including brand-new
+// categories the owner creates on the fly) is free-text and just appended.
+const BASE_CATEGORIES = ["breads", "cookies", "pastries", "cakes", "custom"];
 // Rendered with a distinct label so it's clear this isn't a normal browsing category —
 // items here only ever show in the customer-facing "Today's Specials" strip.
 const specialCategory = { value: "special", label: "⭐ Today's special (not on regular menu)" };
+const NEW_CATEGORY_VALUE = "__new__";
 
 const emptyForm = { name: "", category: "breads", price: "", unit: "", description: "" };
 // Must match MAX_GALLERY_IMAGES in server/data/menuItems.js — the server is the
@@ -151,7 +155,41 @@ function PhotosEditor({ item, maxImages, onChanged, onClose }) {
   );
 }
 
-function MenuItemRow({ item, isRecipeOpen, isGalleryOpen, onToggleSpecial, onTogglePopular, onToggleAvailability, onToggleRecipe, onToggleGallery, onEdit, onDelete }) {
+function StatusPills({ item }) {
+  return (
+    <>
+      {item.isSpecial && <span className="status-pill gold">⭐ Special</span>}
+      {item.isPopular && <span className="status-pill red">🔥 Popular</span>}
+      {!item.inStock && <span className="status-pill muted">Sold out</span>}
+    </>
+  );
+}
+
+function MenuItemActions({ item, isRecipeOpen, isGalleryOpen, onToggleSpecial, onTogglePopular, onToggleAvailability, onToggleRecipe, onToggleGallery, onEdit, onDelete }) {
+  return (
+    <div className="menu-row-actions">
+      <div className="action-group">
+        <button onClick={onToggleSpecial} className={`toggle-chip${item.isSpecial ? " on gold" : ""}`}>⭐ Special</button>
+        <button onClick={onTogglePopular} className={`toggle-chip${item.isPopular ? " on red" : ""}`}>🔥 Popular</button>
+        <button onClick={onToggleAvailability} className={`toggle-chip${!item.inStock ? " on red" : ""}`}>
+          {item.inStock ? "In stock" : "Sold out"}
+        </button>
+      </div>
+      <div className="action-divider" />
+      <div className="action-group">
+        <button onClick={onToggleRecipe} className={`admin-btn-xs${isRecipeOpen ? " active" : ""}`}>Recipe</button>
+        <button onClick={onToggleGallery} className={`admin-btn-xs${isGalleryOpen ? " active" : ""}`}>Photos</button>
+      </div>
+      <div className="action-divider" />
+      <div className="action-group">
+        <button onClick={onEdit} className="admin-btn-xs">Edit</button>
+        <button onClick={onDelete} className="admin-btn-xs danger">Delete</button>
+      </div>
+    </div>
+  );
+}
+
+function MenuListRow({ item, ...actionProps }) {
   return (
     <div className="menu-row">
       <div className="menu-row-info">
@@ -163,9 +201,7 @@ function MenuItemRow({ item, isRecipeOpen, isGalleryOpen, onToggleSpecial, onTog
         <div className="menu-row-text">
           <div className="menu-row-name-line">
             <span className="menu-row-name">{item.name}</span>
-            {item.isSpecial && <span className="status-pill gold">⭐ Special</span>}
-            {item.isPopular && <span className="status-pill red">🔥 Popular</span>}
-            {!item.inStock && <span className="status-pill muted">Sold out</span>}
+            <StatusPills item={item} />
           </div>
           <p className="menu-row-meta">
             {item.category} · {item.price ? `₹${item.price}` : "made to order"} / {item.unit}
@@ -173,25 +209,28 @@ function MenuItemRow({ item, isRecipeOpen, isGalleryOpen, onToggleSpecial, onTog
           </p>
         </div>
       </div>
+      <MenuItemActions item={item} {...actionProps} />
+    </div>
+  );
+}
 
-      <div className="menu-row-actions">
-        <div className="action-group">
-          <button onClick={onToggleSpecial} className={`toggle-chip${item.isSpecial ? " on gold" : ""}`}>⭐ Special</button>
-          <button onClick={onTogglePopular} className={`toggle-chip${item.isPopular ? " on red" : ""}`}>🔥 Popular</button>
-          <button onClick={onToggleAvailability} className={`toggle-chip${!item.inStock ? " on red" : ""}`}>
-            {item.inStock ? "In stock" : "Sold out"}
-          </button>
+function MenuGridCard({ item, ...actionProps }) {
+  return (
+    <div className="menu-grid-card">
+      {item.imageUrl ? (
+        <img src={item.imageUrl} alt={item.name} className="menu-grid-photo" />
+      ) : (
+        <div className="menu-grid-photo menu-grid-photo-empty" />
+      )}
+      <div className="menu-grid-card-body">
+        <div className="menu-row-name-line">
+          <span className="menu-row-name">{item.name}</span>
         </div>
-        <div className="action-divider" />
-        <div className="action-group">
-          <button onClick={onToggleRecipe} className={`admin-btn-xs${isRecipeOpen ? " active" : ""}`}>Recipe</button>
-          <button onClick={onToggleGallery} className={`admin-btn-xs${isGalleryOpen ? " active" : ""}`}>Photos</button>
-        </div>
-        <div className="action-divider" />
-        <div className="action-group">
-          <button onClick={onEdit} className="admin-btn-xs">Edit</button>
-          <button onClick={onDelete} className="admin-btn-xs danger">Delete</button>
-        </div>
+        <div className="menu-grid-card-tags"><StatusPills item={item} /></div>
+        <p className="menu-row-meta">
+          {item.price ? `₹${item.price} / ${item.unit}` : `made to order / ${item.unit}`}
+        </p>
+        <MenuItemActions item={item} {...actionProps} />
       </div>
     </div>
   );
@@ -209,12 +248,48 @@ export default function AdminMenu() {
   const [recipeItemId, setRecipeItemId] = useState(null);
   const [galleryItemId, setGalleryItemId] = useState(null);
 
+  const [view, setView] = useState("list"); // "list" | "card"
+  const [activeCategory, setActiveCategory] = useState(null);
+  // Categories the owner just created but hasn't saved an item into yet — kept
+  // client-side only so the new tab shows up immediately. Once a real item
+  // lands in it, it's driven by real data instead and this becomes moot.
+  const [pendingNewCategories, setPendingNewCategories] = useState([]);
+  const [showNewCategoryModal, setShowNewCategoryModal] = useState(false);
+  const [newCategoryName, setNewCategoryName] = useState("");
+
   const load = () => api.getMenu().then((d) => setItems(d.items)).catch((e) => setError(e.message));
 
   useEffect(() => {
     load();
     api.getInventory().then((d) => setInventory(d.items)).catch((e) => setError(e.message));
   }, []);
+
+  const categoryList = useMemo(() => {
+    if (!items) return [];
+    const present = new Set(items.map((i) => i.category));
+    const ordered = BASE_CATEGORIES.filter((c) => present.has(c));
+    present.forEach((c) => {
+      if (!ordered.includes(c) && c !== specialCategory.value) ordered.push(c);
+    });
+    if (present.has(specialCategory.value)) ordered.push(specialCategory.value);
+    pendingNewCategories.forEach((c) => { if (!ordered.includes(c)) ordered.push(c); });
+    return ordered;
+  }, [items, pendingNewCategories]);
+
+  useEffect(() => {
+    if (activeCategory === null && categoryList.length > 0) setActiveCategory(categoryList[0]);
+  }, [categoryList, activeCategory]);
+
+  const itemsInActiveCategory = useMemo(
+    () => (items || []).filter((m) => m.category === activeCategory),
+    [items, activeCategory]
+  );
+
+  const formCategoryOptions = useMemo(() => {
+    const set = new Set([...BASE_CATEGORIES, ...pendingNewCategories, ...(items || []).map((i) => i.category)]);
+    set.delete(specialCategory.value);
+    return [...set];
+  }, [items, pendingNewCategories]);
 
   const startEdit = (item) => {
     setEditingId(item.id);
@@ -225,7 +300,7 @@ export default function AdminMenu() {
 
   const resetForm = () => {
     setEditingId(null);
-    setForm(emptyForm);
+    setForm((f) => ({ ...emptyForm, category: f.category }));
     setImageFile(null);
     setFormError(null);
   };
@@ -248,6 +323,7 @@ export default function AdminMenu() {
       } else {
         await api.createMenuItem(fd);
       }
+      setActiveCategory(form.category);
       resetForm();
       await load();
     } catch (err) {
@@ -297,42 +373,118 @@ export default function AdminMenu() {
     }
   };
 
+  const handleCategorySelectChange = (e) => {
+    if (e.target.value === NEW_CATEGORY_VALUE) {
+      setShowNewCategoryModal(true);
+      return; // leave form.category as-is until the modal resolves
+    }
+    setForm((f) => ({ ...f, category: e.target.value }));
+  };
+
+  const confirmNewCategory = () => {
+    const name = newCategoryName.trim().toLowerCase();
+    if (!name) return;
+    setPendingNewCategories((prev) => (prev.includes(name) ? prev : [...prev, name]));
+    setForm((f) => ({ ...f, category: name }));
+    setActiveCategory(name);
+    setShowNewCategoryModal(false);
+    setNewCategoryName("");
+  };
+
+  const cancelNewCategory = () => {
+    setShowNewCategoryModal(false);
+    setNewCategoryName("");
+  };
+
   if (error) return <AdminPage title="Menu"><p style={{ color: "var(--a-danger-text)" }}>Couldn't load menu: {error}</p></AdminPage>;
   if (!items || !inventory) return <AdminPage title="Menu"><p style={{ color: "var(--a-text-secondary)" }}>Loading…</p></AdminPage>;
 
+  const actionPropsFor = (item) => ({
+    isRecipeOpen: recipeItemId === item.id,
+    isGalleryOpen: galleryItemId === item.id,
+    onToggleSpecial: () => toggleSpecial(item),
+    onTogglePopular: () => togglePopular(item),
+    onToggleAvailability: () => toggleAvailability(item),
+    onToggleRecipe: () => setRecipeItemId(recipeItemId === item.id ? null : item.id),
+    onToggleGallery: () => setGalleryItemId(galleryItemId === item.id ? null : item.id),
+    onEdit: () => startEdit(item),
+    onDelete: () => handleDelete(item.id)
+  });
+
   return (
     <AdminPage eyebrow="Add, edit, and photograph what's for sale — this is what customers see on the Order page" title="Menu">
-      <div className="admin-two-col">
-        <ListPanel>
-          {items.map((item) => (
-            <div key={item.id} className="menu-row-wrap">
-              <MenuItemRow
-                item={item}
-                isRecipeOpen={recipeItemId === item.id}
-                isGalleryOpen={galleryItemId === item.id}
-                onToggleSpecial={() => toggleSpecial(item)}
-                onTogglePopular={() => togglePopular(item)}
-                onToggleAvailability={() => toggleAvailability(item)}
-                onToggleRecipe={() => setRecipeItemId(recipeItemId === item.id ? null : item.id)}
-                onToggleGallery={() => setGalleryItemId(galleryItemId === item.id ? null : item.id)}
-                onEdit={() => startEdit(item)}
-                onDelete={() => handleDelete(item.id)}
-              />
-              {recipeItemId === item.id && <RecipeEditor item={item} inventory={inventory} onClose={() => setRecipeItemId(null)} />}
-              {galleryItemId === item.id && (
-                <PhotosEditor item={item} maxImages={MAX_GALLERY_IMAGES} onChanged={load} onClose={() => setGalleryItemId(null)} />
-              )}
-            </div>
+      <div className="menu-toolbar">
+        <div className="menu-cat-tabs">
+          {categoryList.map((c) => (
+            <button
+              key={c}
+              className={`menu-cat-tab${c === activeCategory ? " active" : ""}`}
+              onClick={() => setActiveCategory(c)}
+            >
+              {c === specialCategory.value ? "⭐ Special" : c} · {items.filter((m) => m.category === c).length}
+            </button>
           ))}
-          {items.length === 0 && <p style={{ padding: 14, fontSize: 13, color: "var(--a-text-secondary)" }}>No menu items yet — add one to the right.</p>}
-        </ListPanel>
+        </div>
+        <div className="menu-view-toggle">
+          <button
+            className={`menu-view-btn${view === "list" ? " active" : ""}`}
+            onClick={() => setView("list")}
+            aria-label="List view"
+          >
+            ☰
+          </button>
+          <button
+            className={`menu-view-btn${view === "card" ? " active" : ""}`}
+            onClick={() => setView("card")}
+            aria-label="Card view"
+          >
+            ▦
+          </button>
+        </div>
+      </div>
+
+      <div className="admin-two-col">
+        <div>
+          {itemsInActiveCategory.length === 0 && (
+            <div className="menu-empty">No items in {activeCategory} yet — add one on the right.</div>
+          )}
+
+          {itemsInActiveCategory.length > 0 && view === "list" && (
+            <ListPanel>
+              {itemsInActiveCategory.map((item) => (
+                <div key={item.id} className="menu-row-wrap">
+                  <MenuListRow item={item} {...actionPropsFor(item)} />
+                  {recipeItemId === item.id && <RecipeEditor item={item} inventory={inventory} onClose={() => setRecipeItemId(null)} />}
+                  {galleryItemId === item.id && (
+                    <PhotosEditor item={item} maxImages={MAX_GALLERY_IMAGES} onChanged={load} onClose={() => setGalleryItemId(null)} />
+                  )}
+                </div>
+              ))}
+            </ListPanel>
+          )}
+
+          {itemsInActiveCategory.length > 0 && view === "card" && (
+            <div className="menu-card-grid">
+              {itemsInActiveCategory.map((item) => (
+                <div key={item.id} className="menu-grid-card-wrap">
+                  <MenuGridCard item={item} {...actionPropsFor(item)} />
+                  {recipeItemId === item.id && <RecipeEditor item={item} inventory={inventory} onClose={() => setRecipeItemId(null)} />}
+                  {galleryItemId === item.id && (
+                    <PhotosEditor item={item} maxImages={MAX_GALLERY_IMAGES} onChanged={load} onClose={() => setGalleryItemId(null)} />
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
 
         <form onSubmit={handleSubmit} className="admin-form-panel">
           <p className="admin-section-title">{editingId ? "Edit item" : "Add item"}</p>
           <input className="admin-search" placeholder="Name" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} style={{ marginBottom: 8 }} required />
-          <select className="admin-search" value={form.category} onChange={(e) => setForm({ ...form, category: e.target.value })} style={{ marginBottom: 8 }}>
-            {categories.map((c) => <option key={c} value={c}>{c}</option>)}
+          <select className="admin-search" value={form.category} onChange={handleCategorySelectChange} style={{ marginBottom: 8 }}>
+            {formCategoryOptions.map((c) => <option key={c} value={c}>{c}</option>)}
             <option value={specialCategory.value}>{specialCategory.label}</option>
+            <option value={NEW_CATEGORY_VALUE}>+ New category…</option>
           </select>
           {form.category === specialCategory.value && (
             <p className="admin-note">
@@ -342,7 +494,11 @@ export default function AdminMenu() {
           <input type="number" step="0.01" className="admin-search" placeholder="Price (leave blank for made-to-order)" value={form.price} onChange={(e) => setForm({ ...form, price: e.target.value })} style={{ marginBottom: 8 }} />
           <input className="admin-search" placeholder="Unit (e.g. loaf, piece, box)" value={form.unit} onChange={(e) => setForm({ ...form, unit: e.target.value })} style={{ marginBottom: 8 }} required />
           <textarea className="admin-search" placeholder="Description" value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} rows={3} style={{ marginBottom: 10, resize: "vertical" }} />
-          <input type="file" accept="image/*" onChange={(e) => setImageFile(e.target.files[0] || null)} style={{ marginBottom: 10, fontSize: 12 }} />
+          <label className="admin-photo-choose">
+            <i className="ti ti-photo" aria-hidden="true" />
+            {imageFile ? imageFile.name : "Choose photo"}
+            <input type="file" accept="image/*" onChange={(e) => setImageFile(e.target.files[0] || null)} style={{ display: "none" }} />
+          </label>
           {formError && <p style={{ fontSize: 12, color: "var(--a-danger-text)", marginBottom: 10 }}>{formError}</p>}
           <div style={{ display: "flex", gap: 8 }}>
             <button type="submit" disabled={saving} className="admin-btn-primary" style={{ flex: 1 }}>
@@ -353,6 +509,30 @@ export default function AdminMenu() {
         </form>
       </div>
 
+      {showNewCategoryModal && (
+        <div className="menu-modal-scrim" onClick={cancelNewCategory}>
+          <div className="menu-modal-box" onClick={(e) => e.stopPropagation()}>
+            <p className="menu-modal-title">New category</p>
+            <p className="menu-modal-hint">Appears as a new tab here, and as a new tab on the customer Order page once it has at least one item.</p>
+            <input
+              autoFocus
+              className="admin-search"
+              placeholder="e.g. Seasonal, Gift boxes"
+              value={newCategoryName}
+              onChange={(e) => setNewCategoryName(e.target.value)}
+              onKeyDown={(e) => e.key === "Enter" && confirmNewCategory()}
+              style={{ marginBottom: 12 }}
+            />
+            <div className="menu-modal-actions">
+              <button type="button" className="admin-btn-sm" onClick={cancelNewCategory}>Cancel</button>
+              <button type="button" className="admin-btn-primary" style={{ width: "auto", padding: "8px 16px" }} onClick={confirmNewCategory}>
+                Add category
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       <style>{`
         .admin-section-title { font-size: 14px; font-weight: 500; margin-bottom: 10px; }
         .admin-two-col { display: grid; grid-template-columns: 1fr; gap: 18px; }
@@ -361,18 +541,39 @@ export default function AdminMenu() {
         .admin-form-panel { background: var(--a-panel); border: 1px solid var(--a-border); border-radius: var(--a-radius); padding: 16px; align-self: start; }
         .admin-btn-primary { padding: 10px; background: var(--a-green); color: #fff; border: none; border-radius: 6px; font-size: 13px; }
         .admin-btn-secondary { background: var(--a-bg); border: 1px solid var(--a-border); border-radius: 6px; font-size: 13px; }
+        .admin-btn-sm { border: 1px solid var(--a-border); background: var(--a-panel); border-radius: 6px; padding: 6px 12px; font-size: 11.5px; white-space: nowrap; }
         .admin-btn-xs { border: 1px solid var(--a-border); background: var(--a-panel); border-radius: 6px; padding: 5px 10px; font-size: 11.5px; white-space: nowrap; color: var(--a-text-secondary); }
         .admin-btn-xs.danger { color: var(--a-danger-text); }
         .admin-btn-xs.active { background: var(--a-bg); color: var(--a-text-primary); }
-
-        /* Menu item row — redesigned so the data (name, category, price, status)
-           reads at a glance, and the seven possible actions per item stay
-           compact and grouped instead of reading as one undifferentiated wall
-           of identical buttons. */
-        .menu-row {
-          display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between;
-          gap: 10px 16px; padding: 12px 14px;
+        .admin-photo-choose {
+          display: flex; align-items: center; justify-content: center; gap: 6px;
+          width: 100%; box-sizing: border-box; padding: 9px; margin-bottom: 10px;
+          border: 1px dashed var(--a-border); border-radius: 6px; font-size: 12.5px;
+          color: var(--a-text-secondary); cursor: pointer;
         }
+
+        /* Category tabs + view toggle */
+        .menu-toolbar { display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap; margin-bottom: 14px; }
+        .menu-cat-tabs { display: flex; gap: 6px; flex-wrap: wrap; }
+        .menu-cat-tab {
+          padding: 7px 15px; border-radius: 20px; border: 1px solid var(--a-border);
+          background: var(--a-panel); font-size: 12.5px; color: var(--a-text-secondary); white-space: nowrap;
+        }
+        .menu-cat-tab.active { background: var(--a-green); color: #fff; border-color: var(--a-green); }
+        .menu-view-toggle { display: flex; border: 1px solid var(--a-border); border-radius: 6px; overflow: hidden; flex-shrink: 0; }
+        .menu-view-btn { padding: 6px 12px; background: var(--a-panel); border: none; color: var(--a-text-muted); font-size: 14px; }
+        .menu-view-btn.active { background: var(--a-green); color: #fff; }
+        .menu-view-btn + .menu-view-btn { border-left: 1px solid var(--a-border); }
+
+        .menu-empty {
+          background: var(--a-panel); border: 1px solid var(--a-border); border-radius: var(--a-radius);
+          padding: 30px; text-align: center; color: var(--a-text-muted); font-size: 12.5px;
+        }
+
+        /* List view row — data (name, category, price, status) reads at a glance,
+           and the seven possible actions per item stay compact and grouped
+           instead of reading as one undifferentiated wall of identical buttons. */
+        .menu-row { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 10px 16px; padding: 12px 14px; }
         .menu-row-wrap { border-bottom: 1px solid var(--a-border); }
         .menu-row-wrap:last-child { border-bottom: none; }
         .menu-row-info { display: flex; align-items: center; gap: 12px; flex: 1 1 240px; min-width: 0; }
@@ -399,6 +600,20 @@ export default function AdminMenu() {
         }
         .toggle-chip.on.gold { border-color: var(--a-accent); background: var(--a-warning-bg); color: var(--a-warning-text); }
         .toggle-chip.on.red { border-color: var(--a-danger-text); background: var(--a-danger-bg); color: var(--a-danger-text); }
+
+        /* Card view */
+        .menu-card-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; }
+        @media (min-width: 640px) { .menu-card-grid { grid-template-columns: repeat(3, 1fr); } }
+        .menu-grid-card-wrap { background: var(--a-panel); border: 1px solid var(--a-border); border-radius: 12px; overflow: hidden; }
+        .menu-grid-card { display: flex; flex-direction: column; }
+        .menu-grid-photo { width: 100%; height: 100px; object-fit: cover; }
+        .menu-grid-photo-empty { background: var(--a-bg); }
+        .menu-grid-card-body { padding: 10px; display: flex; flex-direction: column; gap: 6px; }
+        .menu-grid-card-tags { display: flex; gap: 5px; flex-wrap: wrap; }
+        .menu-grid-card-body .menu-row-actions { gap: 6px; }
+        .menu-grid-card-body .action-divider { display: none; }
+        .menu-grid-card-body .action-group { gap: 4px; }
+
         .admin-photo-remove {
           position: absolute; top: -6px; right: -6px; width: 20px; height: 20px; border-radius: 50%;
           background: var(--a-danger-text); color: #fff; border: 2px solid var(--a-bg); font-size: 10px;
@@ -413,6 +628,15 @@ export default function AdminMenu() {
         .admin-recipe-editor { padding: 12px 14px; background: var(--a-bg); border-top: 1px solid var(--a-border); }
         .admin-inline-input { border: 1px solid var(--a-border); border-radius: 6px; padding: 5px 6px; font-size: 12px; }
         .admin-link-btn { border: none; background: none; color: var(--a-danger-text); cursor: pointer; font-size: 12px; padding: 0; }
+
+        .menu-modal-scrim {
+          position: fixed; inset: 0; background: rgba(28,35,32,0.45);
+          display: flex; align-items: center; justify-content: center; z-index: 50; padding: 16px;
+        }
+        .menu-modal-box { background: var(--a-panel); border-radius: 12px; padding: 20px; width: 320px; max-width: 100%; box-sizing: border-box; }
+        .menu-modal-title { font-size: 15px; font-weight: 500; margin: 0 0 4px; }
+        .menu-modal-hint { font-size: 12px; color: var(--a-text-secondary); margin: 0 0 14px; }
+        .menu-modal-actions { display: flex; gap: 8px; justify-content: flex-end; }
       `}</style>
     </AdminPage>
   );

@@ -9,7 +9,21 @@ const severityStyle = {
 
 const POLL_MS = 30000;
 
-export default function NotificationBell() {
+// align="right" (default) opens the panel leftward from the bell's right edge —
+// correct when the bell sits near the right side of a wide bar (the mobile
+// topbar). align="left" opens it rightward instead, for when the bell sits
+// near the left edge of the screen (the desktop admin sidebar) — with the
+// default there, a 320px panel anchored to the right edge of a ~200px-wide
+// sidebar column renders more than a third of itself off the left of the
+// viewport entirely, not just visually clipped by any ancestor.
+//
+// openUpward mirrors the same problem on the vertical axis: the sidebar bell
+// sits in the footer, near the bottom of the viewport, so the default
+// downward-opening panel (built for the topbar, where the bell is near the
+// top with the whole page below it) runs out of room and extends past the
+// bottom of the screen — genuinely unreachable, since the sidebar itself is
+// position:fixed and doesn't scroll to reveal it.
+export default function NotificationBell({ align = "right", openUpward = false }) {
   const [items, setItems] = useState([]);
   const [count, setCount] = useState(0);
   const [open, setOpen] = useState(false);
@@ -87,8 +101,8 @@ export default function NotificationBell() {
         <div
           style={{
             position: "absolute",
-            right: 0,
-            top: "calc(100% + 8px)",
+            ...(align === "left" ? { left: 0 } : { right: 0 }),
+            ...(openUpward ? { bottom: "calc(100% + 8px)" } : { top: "calc(100% + 8px)" }),
             width: "320px",
             maxHeight: "360px",
             overflowY: "auto",

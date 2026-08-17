@@ -54,7 +54,7 @@ export default function AdminLayout() {
             <span>Guide</span>
           </a>
           <div className="admin-sidebar-bell">
-            <NotificationBell />
+            <NotificationBell align="left" openUpward />
           </div>
           <div className="admin-sidebar-user">
             {user?.name} <span>{user?.email}</span>
@@ -87,8 +87,12 @@ export default function AdminLayout() {
              auto on html/body (a CSS spec quirk: setting one overflow axis to
              non-visible forces the other off "visible" too), which breaks
              sticky's scroll-container detection here. Fixed sidesteps that
-             entirely; .admin-main below reserves the space with a margin. */
-          position: fixed; top: 0; left: 0; height: 100vh; overflow-y: auto; z-index: 25;
+             entirely; .admin-main below reserves the space with a margin.
+             No overflow-y here (deliberately) — it clips the notification
+             dropdown, which is position:absolute inside this sidebar and
+             needs to render outside the sidebar's own box. The nav content
+             (logo + 7 items + footer) comfortably fits 100vh regardless. */
+          position: fixed; top: 0; left: 0; height: 100vh; z-index: 25;
         }
         @media (min-width: 900px) { .admin-sidebar { display: flex; } }
 
