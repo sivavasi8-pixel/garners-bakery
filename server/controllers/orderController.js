@@ -2,6 +2,19 @@ const orders = require("../data/orders");
 const inventory = require("../data/inventory");
 const recipes = require("../data/recipes");
 const asyncHandler = require("../middleware/asyncHandler");
+const { ZONES, calculateFee } = require("../data/deliveryZones");
+
+// The bakery is closed Mondays (Asia/Kolkata) — matches the static "closed on
+// Mondays" graphic that used to be posted by hand every week.
+const isClosedToday = () => {
+  const day = new Date().toLocaleString("en-US", { timeZone: "Asia/Kolkata", weekday: "short" });
+  return day === "Mon";
+};
+
+// Public (no auth) — the Order page checks this before anyone logs in.
+exports.getStoreStatus = (req, res) => {
+  res.json({ closedToday: isClosedToday(), zones: ZONES });
+};
 
 // Shared by order creation (deduct) and cancellation (restock) — items need a
 // menuItemId to match a recipe; a missing recipe or id is a silent no-op for that line.
@@ -39,7 +52,7 @@ exports.getOrder = asyncHandler(async (req, res) => {
 });
 
 exports.createOrder = asyncHandler(async (req, res) => {
-  const { items, total, pickupTime, channel, paymentMethod } = req.body;
+  const { items, total, pickupTime, channel, paymentMethod, deliveryType, deliveryZone, deliveryAddress } = req.body;
   if (!items || !items.length) {
     return res.status(400).json({ error: "items are required" });
   }
@@ -53,6 +66,33 @@ exports.createOrder = asyncHandler(async (req, res) => {
   // customer account for someone paying at the counter.
   const isCustomer = req.user.role === "customer";
 
+  // Closed Mondays only block the public online storefront — staff/owner can
+  // still log a walk-in or a phone order from the in-store POS.
+  if (isCustomer && isClosedToday()) {
+    return res.status(400).json({ error: "We're closed today (Monday). Online ordering reopens tomorrow." });
+  }
+
+  let itemsTotal = 0;
+  for (const item of items) itemsTotal += (item.price || 0) * (item.qty || 1);
+
+  let resolvedDeliveryFee = null;
+  let resolvedTotal = itemsTotal;
+  if (deliveryType === "delivery") {
+    const zone = ZONES[deliveryZone];
+    if (!zone) {
+      return res.status(400).json({ error: "A valid delivery zone is required" });
+    }
+    if (!deliveryAddress || !deliveryAddress.trim()) {
+      return res.status(400).json({ error: "A delivery address is required" });
+    }
+    if (zone.minOrder && itemsTotal < zone.minOrder) {
+      return res.status(400).json({ error: `This zone needs a minimum order of ₹${zone.minOrder}` });
+    }
+    const { fee } = calculateFee(deliveryZone, itemsTotal);
+    resolvedDeliveryFee = fee; // null for the Porter zone — confirmed manually by staff
+    resolvedTotal = itemsTotal + (fee || 0);
+  }
+
   // No real payment gateway here (out of scope for a local dev app) — this simulates
   // the two realistic outcomes: a walk-in POS sale is paid on the spot regardless of
   // method, and an online order is only "paid" immediately for upi/card (treated as
@@ -64,11 +104,15 @@ exports.createOrder = asyncHandler(async (req, res) => {
     customerName: isCustomer ? req.user.name : req.body.customerName || "Walk-in",
     customerId: isCustomer ? req.user.id : null,
     items,
-    total,
+    total: deliveryType === "delivery" ? resolvedTotal : total,
     pickupTime,
     channel: channel || (isCustomer ? "online" : "in-store"),
     paymentMethod: paymentMethod || "cash",
-    paymentStatus
+    paymentStatus,
+    deliveryType: deliveryType === "delivery" ? "delivery" : "pickup",
+    deliveryZone: deliveryType === "delivery" ? deliveryZone : null,
+    deliveryAddress: deliveryType === "delivery" ? deliveryAddress.trim() : null,
+    deliveryFee: deliveryType === "delivery" ? resolvedDeliveryFee : null
   });
 
   await adjustStockForItems(items, "deduct");

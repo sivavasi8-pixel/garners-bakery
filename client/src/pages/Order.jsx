@@ -3,6 +3,7 @@ import { Link } from "react-router-dom";
 import { api } from "../api";
 import { useAuth } from "../auth/AuthContext";
 import { useCart } from "../cart/CartContext";
+import { ZONES, calculateFee } from "../deliveryZones";
 
 // Known categories get a curated label/icon; anything else (including a
 // brand-new category the owner just created in Menu admin) still shows up
@@ -19,8 +20,8 @@ const CATEGORY_META = {
 const FALLBACK_CATEGORY_META = { icon: "🧁", tone: "ph-fallback" };
 const BASE_CATEGORY_ORDER = ["breads", "cookies", "pastries", "cakes", "custom"];
 
-const paymentOptions = [
-  { id: "cash", label: "Cash on pickup" },
+const paymentOptions = (fulfillment) => [
+  { id: "cash", label: fulfillment === "delivery" ? "Cash on delivery" : "Cash on pickup" },
   { id: "upi", label: "UPI" },
   { id: "card", label: "Card" }
 ];
@@ -185,6 +186,10 @@ export default function Order() {
   const [checkoutError, setCheckoutError] = useState(null);
   const [activeOrder, setActiveOrder] = useState(null);
   const [favorites, setFavorites] = useState(loadFavorites);
+  const [storeStatus, setStoreStatus] = useState(null);
+  const [fulfillment, setFulfillment] = useState("pickup");
+  const [deliveryZone, setDeliveryZone] = useState(ZONES[0].id);
+  const [deliveryAddress, setDeliveryAddress] = useState("");
   const { user } = useAuth();
   const { cart, addToCart, addCustomItem, clearCart, total, count: cartCount } = useCart();
   const canOrder = user && user.role === "customer";
@@ -192,6 +197,7 @@ export default function Order() {
 
   useEffect(() => {
     api.getMenu().then((d) => setMenu(d.items)).catch((e) => setError(e.message));
+    api.getStoreStatus().then(setStoreStatus).catch(() => {}); // banner is a nice-to-have, not a hard gate on browsing
   }, []);
 
   useEffect(() => {
@@ -245,6 +251,13 @@ export default function Order() {
     });
   };
 
+  const selectedZone = ZONES.find((z) => z.id === deliveryZone);
+  const { fee: deliveryFee, pending: deliveryFeePending } =
+    fulfillment === "delivery" ? calculateFee(deliveryZone, total) : { fee: 0, pending: false };
+  const belowMinOrder = fulfillment === "delivery" && selectedZone && total < selectedZone.minOrder;
+  const grandTotal = total + (deliveryFee || 0);
+  const isClosedToday = storeStatus?.closedToday;
+
   const handleCheckout = async () => {
     setCheckoutError(null);
     setPlacing(true);
@@ -254,12 +267,16 @@ export default function Order() {
         total,
         pickupTime: pickupTime || "Not specified",
         channel: "online",
-        paymentMethod
+        paymentMethod,
+        deliveryType: fulfillment,
+        deliveryZone: fulfillment === "delivery" ? deliveryZone : undefined,
+        deliveryAddress: fulfillment === "delivery" ? deliveryAddress : undefined
       });
       setPlacedOrder(order.order);
       setActiveOrder(order.order);
       clearCart();
       setPickupTime("");
+      setDeliveryAddress("");
     } catch (err) {
       setCheckoutError(err.message);
     } finally {
@@ -289,9 +306,16 @@ export default function Order() {
         <div className="hero-copy">
           <span className="hero-eyebrow">✨ Baked daily</span>
           <h1 className="hero-title">Oven-fresh, baked daily</h1>
-          <p className="hero-sub">Store pick up · oven fresh daily bakes</p>
+          <p className="hero-sub">Pickup or delivery · oven fresh daily bakes</p>
         </div>
       </div>
+
+      {isClosedToday && (
+        <div className="closed-banner">
+          <span className="closed-dot" />
+          We're closed today (Monday) — browse the menu, but online ordering reopens tomorrow.
+        </div>
+      )}
 
       {activeOrder && (
         <Link to={`/receipt/${activeOrder.id}`} className="tracker">
@@ -421,30 +445,100 @@ export default function Order() {
 
               {cart.length > 0 && (
                 <>
-                  <input
-                    type="text"
-                    placeholder="Pickup time (e.g. 5:00 PM today)"
-                    value={pickupTime}
-                    onChange={(e) => setPickupTime(e.target.value)}
-                    className="field-input"
-                  />
+                  <div className="fulfillment-toggle">
+                    <button
+                      type="button"
+                      className={`fulfillment-btn${fulfillment === "pickup" ? " active" : ""}`}
+                      onClick={() => setFulfillment("pickup")}
+                    >
+                      Store pickup
+                    </button>
+                    <button
+                      type="button"
+                      className={`fulfillment-btn${fulfillment === "delivery" ? " active" : ""}`}
+                      onClick={() => setFulfillment("delivery")}
+                    >
+                      Delivery
+                    </button>
+                  </div>
+
+                  {fulfillment === "pickup" ? (
+                    <input
+                      type="text"
+                      placeholder="Pickup time (e.g. 5:00 PM today)"
+                      value={pickupTime}
+                      onChange={(e) => setPickupTime(e.target.value)}
+                      className="field-input"
+                    />
+                  ) : (
+                    <>
+                      <select value={deliveryZone} onChange={(e) => setDeliveryZone(e.target.value)} className="field-input">
+                        {ZONES.map((z) => (
+                          <option key={z.id} value={z.id}>{z.label}</option>
+                        ))}
+                      </select>
+                      <textarea
+                        placeholder="Delivery address"
+                        value={deliveryAddress}
+                        onChange={(e) => setDeliveryAddress(e.target.value)}
+                        className="field-input field-textarea"
+                        rows={2}
+                      />
+                      <input
+                        type="text"
+                        placeholder="Delivery time (e.g. 5:00 PM today)"
+                        value={pickupTime}
+                        onChange={(e) => setPickupTime(e.target.value)}
+                        className="field-input"
+                      />
+                      {belowMinOrder && (
+                        <p className="checkout-error">This zone needs a minimum order of ₹{selectedZone.minOrder}.</p>
+                      )}
+                      {deliveryFeePending && (
+                        <p className="delivery-note">
+                          Delivery is outside our standard zones — we'll confirm the exact Porter charge with you before baking starts.
+                        </p>
+                      )}
+                    </>
+                  )}
+
                   <select value={paymentMethod} onChange={(e) => setPaymentMethod(e.target.value)} className="field-input">
-                    {paymentOptions.map((p) => (
+                    {paymentOptions(fulfillment).map((p) => (
                       <option key={p.id} value={p.id}>{p.label}</option>
                     ))}
                   </select>
                 </>
               )}
 
+              {fulfillment === "delivery" && !deliveryFeePending && (
+                <div className="cart-total-row cart-fee-row">
+                  <span className="cart-total-label">Delivery fee</span>
+                  <span className="cart-total-value">{deliveryFee ? `₹${deliveryFee}` : "Free"}</span>
+                </div>
+              )}
+
               <div className="cart-total-row">
                 <span className="cart-total-label">Total</span>
-                <span className="cart-total-value">₹{total}</span>
+                <span className="cart-total-value">₹{grandTotal}{deliveryFeePending ? " + delivery" : ""}</span>
               </div>
 
               {checkoutError && <p className="checkout-error">{checkoutError}</p>}
+              {isClosedToday && cart.length > 0 && (
+                <p className="checkout-error">We're closed today (Monday) — checkout reopens tomorrow.</p>
+              )}
 
               {canOrder ? (
-                <button onClick={handleCheckout} disabled={cart.length === 0 || placing} className="btn-checkout">
+                <button
+                  onClick={handleCheckout}
+                  disabled={
+                    cart.length === 0 ||
+                    placing ||
+                    isClosedToday ||
+                    belowMinOrder ||
+                    (fulfillment === "delivery" && !deliveryAddress.trim())
+                  }
+                  className="btn-checkout"
+                >
                   {placing ? "Placing order…" : "Checkout"}
                 </button>
               ) : (
@@ -488,6 +582,24 @@ export default function Order() {
         }
         .hero-title { font-size: 26px; margin: 0 0 5px; line-height: 1.15; color: var(--cream); }
         .hero-sub { font-size: 12.5px; opacity: 0.85; margin: 0; }
+
+        .closed-banner {
+          display: flex; align-items: center; gap: 9px; margin-bottom: 16px;
+          background: var(--warning-bg); color: var(--warning-text); border-radius: var(--radius);
+          padding: 11px 14px; font-size: 12.5px; font-weight: 500;
+        }
+        .closed-dot { width: 7px; height: 7px; border-radius: 50%; background: currentColor; flex-shrink: 0; }
+
+        .fulfillment-toggle { display: flex; gap: 8px; margin-bottom: 10px; }
+        .fulfillment-btn {
+          flex: 1; padding: 8px; font-size: 12.5px; font-weight: 500; border-radius: 8px;
+          border: 1px solid var(--border); background: var(--surface-1); color: var(--text-secondary);
+        }
+        .fulfillment-btn.active { border-color: var(--green); background: var(--green); color: var(--cream); }
+        .field-textarea { resize: vertical; font-family: var(--font-body); }
+        .delivery-note { font-size: 11.5px; color: var(--text-secondary); margin: -4px 0 10px; }
+        .cart-fee-row { margin: 0 0 4px; }
+        .cart-fee-row .cart-total-label, .cart-fee-row .cart-total-value { font-size: 12px; color: var(--text-secondary); }
 
         .tracker {
           display: flex; align-items: center; gap: 11px; margin-bottom: 16px;

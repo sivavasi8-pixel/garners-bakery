@@ -13,6 +13,10 @@ const mapRow = (row) =>
     channel: row.channel,
     paymentMethod: row.payment_method,
     paymentStatus: row.payment_status,
+    deliveryType: row.delivery_type,
+    deliveryZone: row.delivery_zone,
+    deliveryAddress: row.delivery_address,
+    deliveryFee: row.delivery_fee === null ? null : Number(row.delivery_fee),
     createdAt: row.created_at
   };
 
@@ -41,10 +45,26 @@ module.exports = {
     );
     return rows.map(mapRow);
   },
-  create: async ({ customerName, customerId, items, total, pickupTime, channel, paymentMethod, paymentStatus }) => {
+  create: async ({
+    customerName,
+    customerId,
+    items,
+    total,
+    pickupTime,
+    channel,
+    paymentMethod,
+    paymentStatus,
+    deliveryType,
+    deliveryZone,
+    deliveryAddress,
+    deliveryFee
+  }) => {
     const { rows } = await pool.query(
-      `insert into orders (customer_name, customer_id, items, total, pickup_time, channel, payment_method, payment_status)
-       values ($1, $2, $3, $4, $5, $6, $7, $8) returning *`,
+      `insert into orders (
+         customer_name, customer_id, items, total, pickup_time, channel, payment_method, payment_status,
+         delivery_type, delivery_zone, delivery_address, delivery_fee
+       )
+       values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12) returning *`,
       [
         customerName,
         customerId,
@@ -53,7 +73,11 @@ module.exports = {
         pickupTime,
         channel || "online",
         paymentMethod || null,
-        paymentStatus || "unpaid"
+        paymentStatus || "unpaid",
+        deliveryType || "pickup",
+        deliveryZone || null,
+        deliveryAddress || null,
+        deliveryFee === undefined ? null : deliveryFee
       ]
     );
     return mapRow(rows[0]);

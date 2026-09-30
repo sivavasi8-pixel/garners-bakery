@@ -2,8 +2,16 @@ import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { api } from "../api";
 import { AdminPage, StatusPill } from "../components/admin/AdminUI";
+import { ZONES } from "../deliveryZones";
 
 const statusOptions = ["placed", "baking", "ready", "delivered", "cancelled"];
+
+const zoneLabel = (id) => ZONES.find((z) => z.id === id)?.label || id;
+const deliveryFeeLabel = (o) => {
+  if (o.deliveryFee === null) return "fee TBC (Porter)";
+  if (o.deliveryFee === 0) return "free delivery";
+  return `₹${o.deliveryFee} delivery fee`;
+};
 
 const itemsLabel = (items) =>
   items
@@ -80,6 +88,21 @@ export default function AdminOrders() {
       </span>
     );
 
+  const FulfillmentCell = ({ o }) => (
+    <div>
+      <p style={{ margin: "0 0 2px", fontSize: 11, fontWeight: 600, color: "var(--a-text-secondary)" }}>
+        {o.deliveryType === "delivery" ? "Delivery" : "Pickup"}
+      </p>
+      <PickupCell o={o} />
+      {o.deliveryType === "delivery" && (
+        <div style={{ marginTop: 4, fontSize: 11, color: "var(--a-text-secondary)" }}>
+          <p style={{ margin: 0 }}>{zoneLabel(o.deliveryZone)} · {deliveryFeeLabel(o)}</p>
+          <p style={{ margin: 0, overflowWrap: "anywhere" }}>{o.deliveryAddress}</p>
+        </div>
+      )}
+    </div>
+  );
+
   const StatusCell = ({ o }) => (
     <div style={{ display: "flex", alignItems: "center", gap: 6, flexWrap: "wrap" }}>
       <StatusPill status={o.status} />
@@ -127,7 +150,7 @@ export default function AdminOrders() {
         <table className="admin-data-table">
           <thead>
             <tr>
-              <th>Order</th><th>Items</th><th>Total</th><th>Pickup</th><th>Payment</th><th>Status</th>
+              <th>Order</th><th>Items</th><th>Total</th><th>Fulfillment</th><th>Payment</th><th>Status</th>
             </tr>
           </thead>
           <tbody>
@@ -140,7 +163,7 @@ export default function AdminOrders() {
                 </td>
                 <td style={{ maxWidth: 260 }}>{itemsLabel(o.items)}</td>
                 <td>₹{o.total}</td>
-                <td><PickupCell o={o} /></td>
+                <td style={{ minWidth: 150 }}><FulfillmentCell o={o} /></td>
                 <td><PaymentCell o={o} /></td>
                 <td><StatusCell o={o} /></td>
               </tr>
@@ -161,7 +184,7 @@ export default function AdminOrders() {
               <span style={{ fontSize: 13, fontWeight: 500 }}>₹{o.total}</span>
             </div>
             <p style={{ margin: "0 0 6px", fontSize: 11.5, color: "var(--a-text-secondary)" }}>{itemsLabel(o.items)}</p>
-            <p style={{ margin: "0 0 8px", fontSize: 12, color: "var(--a-text-secondary)" }}>Pickup: <PickupCell o={o} /></p>
+            <div style={{ margin: "0 0 8px" }}><FulfillmentCell o={o} /></div>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 8 }}>
               <PaymentCell o={o} />
               <StatusCell o={o} />

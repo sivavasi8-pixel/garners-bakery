@@ -2,6 +2,9 @@ import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { api } from "../api";
 import { AdminPage, StatGrid, StatCard, StatusPill, ListPanel, ListRow } from "../components/admin/AdminUI";
+import { ZONES } from "../deliveryZones";
+
+const zoneLabel = (id) => ZONES.find((z) => z.id === id)?.label || id;
 
 const itemsLabel = (items) =>
   items
@@ -74,6 +77,7 @@ export default function Dashboard() {
                   </p>
                   <p style={{ margin: "3px 0 0", fontSize: 11.5, color: "var(--a-text-secondary)" }}>
                     {itemsLabel(o.items)} · {o.pickupTime}
+                    {o.deliveryType === "delivery" && <> · 🚴 {zoneLabel(o.deliveryZone)}</>}
                   </p>
                 </div>
                 <div style={{ display: "flex", alignItems: "center", gap: 6, flexShrink: 0 }}>

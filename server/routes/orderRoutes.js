@@ -3,6 +3,10 @@ const router = express.Router();
 const orderController = require("../controllers/orderController");
 const { requireAuth, requireRole } = require("../middleware/auth");
 
+// Public — no login needed to see whether the bakery is open today, or the delivery
+// zone list, before a customer even starts browsing. Must come before "/:id".
+router.get("/store-status", orderController.getStoreStatus);
+
 // A logged-in customer's own order history — must come before "/:id" or "mine" would be parsed as an id.
 router.get("/mine", requireAuth, requireRole("customer"), orderController.getMyOrders);
 

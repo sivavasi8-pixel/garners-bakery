@@ -12,6 +12,7 @@ const allNavItems = [
   { to: "/inventory", label: "Inventory", icon: "ti-package" },
   { to: "/staff", label: "Staff", icon: "ti-users" },
   { to: "/menu-admin", label: "Menu", icon: "ti-tools-kitchen-2", ownerOnly: true },
+  { to: "/poster", label: "Poster", icon: "ti-photo", ownerOnly: true },
   { to: "/reports", label: "Reports", icon: "ti-chart-bar", ownerOnly: true }
 ];
 

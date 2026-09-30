@@ -15,6 +15,7 @@ import Reports from "./pages/Reports";
 import POS from "./pages/POS";
 import Receipt from "./pages/Receipt";
 import Orders from "./pages/Orders";
+import Poster from "./pages/Poster";
 
 export default function App() {
   return (
@@ -62,6 +63,14 @@ export default function App() {
           element={
             <ProtectedRoute roles={["owner"]}>
               <Reports />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/poster"
+          element={
+            <ProtectedRoute roles={["owner"]}>
+              <Poster />
             </ProtectedRoute>
           }
         />

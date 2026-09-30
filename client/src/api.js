@@ -44,6 +44,7 @@ export const api = {
   addMenuGalleryImage: (id, formData) => request(`/menu/${id}/images`, { method: "POST", body: formData }),
   deleteMenuGalleryImage: (id, imageId) => request(`/menu/${id}/images/${imageId}`, { method: "DELETE" }),
 
+  getStoreStatus: () => request("/orders/store-status"),
   getOrders: () => request("/orders"),
   getMyOrders: () => request("/orders/mine"),
   getOrder: (id) => request(`/orders/${id}`),

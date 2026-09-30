@@ -85,6 +85,10 @@ create table if not exists orders (
   status text not null default 'placed' check (status in ('placed', 'baking', 'ready', 'delivered', 'cancelled')),
   payment_method text, -- 'cash' | 'upi' | 'card'
   payment_status text not null default 'unpaid' check (payment_status in ('unpaid', 'paid')),
+  delivery_type text not null default 'pickup' check (delivery_type in ('pickup', 'delivery')),
+  delivery_zone text, -- one of server/data/deliveryZones.js's zone ids, only set when delivery_type = 'delivery'
+  delivery_address text,
+  delivery_fee numeric, -- null means "to be confirmed" (the outside-Whitefield zone, priced by Porter's live rate)
   created_at timestamptz not null default now()
 );
 
