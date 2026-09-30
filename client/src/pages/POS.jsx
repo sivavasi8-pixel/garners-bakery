@@ -1,16 +1,14 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { api } from "../api";
 import { AdminPage } from "../components/admin/AdminUI";
 
-// Deliberately excludes "custom" (made-to-order, needs the full design form on
-// the Order page) and "special" (one-off Today's Specials) — walk-in sales
-// only ring up the regular stocked categories.
-const categories = [
-  { id: "breads", label: "Breads" },
-  { id: "cookies", label: "Cookies" },
-  { id: "cakes", label: "Cakes" }
-];
+// Curated labels for known categories; anything else (a brand-new category
+// added in Menu admin) still gets a tab here automatically, just titled from
+// its raw name — matches how Order.jsx derives its own customer-facing tabs,
+// so a walk-in sale never loses access to a category the moment it's renamed.
+const CATEGORY_LABELS = { breads: "Breads", cookies: "Cookies", pastries: "Pastries", cakes: "Cakes" };
+const BASE_CATEGORY_ORDER = ["breads", "cookies", "pastries", "cakes"];
 
 const paymentOptions = [
   { id: "cash", label: "Cash" },
@@ -20,7 +18,7 @@ const paymentOptions = [
 
 export default function AdminPos() {
   const [menu, setMenu] = useState(null);
-  const [activeCategory, setActiveCategory] = useState("breads");
+  const [activeCategory, setActiveCategory] = useState(null);
   const [cart, setCart] = useState([]);
   const [customerName, setCustomerName] = useState("");
   const [paymentMethod, setPaymentMethod] = useState("cash");
@@ -31,6 +29,23 @@ export default function AdminPos() {
   useEffect(() => {
     api.getMenu().then((d) => setMenu(d.items)).catch((e) => setError(e.message));
   }, []);
+
+  // Real, current categories only — excludes "custom" (made-to-order, needs the
+  // full design form on the Order page) and "special" (one-off Today's Specials);
+  // walk-in sales only ring up the regular stocked categories.
+  const categories = useMemo(() => {
+    if (!menu) return [];
+    const present = new Set(menu.map((m) => m.category));
+    present.delete("custom");
+    present.delete("special");
+    const ordered = BASE_CATEGORY_ORDER.filter((c) => present.has(c));
+    present.forEach((c) => { if (!ordered.includes(c)) ordered.push(c); });
+    return ordered.map((id) => ({ id, label: CATEGORY_LABELS[id] || id.charAt(0).toUpperCase() + id.slice(1) }));
+  }, [menu]);
+
+  useEffect(() => {
+    if (activeCategory === null && categories.length > 0) setActiveCategory(categories[0].id);
+  }, [categories, activeCategory]);
 
   const addToSale = (item) => {
     if (!item.inStock) return;
