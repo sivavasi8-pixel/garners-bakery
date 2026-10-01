@@ -29,12 +29,10 @@ export default function AdminLayout() {
   return (
     <div className="admin-root admin-shell">
       <aside className="admin-sidebar">
+        <div className="admin-awning" aria-hidden="true" />
         <div className="admin-sidebar-brand">
-          <div className="admin-sidebar-badge">G</div>
-          <div>
-            <p className="admin-sidebar-name">GARNERS</p>
-            <p className="admin-sidebar-sub">Owner console</p>
-          </div>
+          <p className="admin-sidebar-name">GARNERS</p>
+          <p className="admin-sidebar-sub">Shop console</p>
         </div>
 
         {navItems.map((n) => (
@@ -50,6 +48,10 @@ export default function AdminLayout() {
         ))}
 
         <div className="admin-sidebar-footer">
+          <a href="/order" className="admin-nav-item">
+            <i className="ti ti-building-store" aria-hidden="true" />
+            <span>View shop</span>
+          </a>
           <a href="/handbook.html" target="_blank" rel="noopener noreferrer" className="admin-nav-item">
             <i className="ti ti-book" aria-hidden="true" />
             <span>Guide</span>
@@ -77,8 +79,8 @@ export default function AdminLayout() {
         .admin-shell { display: flex; min-height: 100vh; }
 
         .admin-sidebar {
-          width: var(--a-sidebar-w); background: var(--a-sidebar); color: #cfd9d3;
-          flex-shrink: 0; padding: 16px 10px; display: none; flex-direction: column;
+          width: var(--a-sidebar-w); background: var(--a-sidebar); color: var(--a-sidebar-text);
+          flex-shrink: 0; padding: 0 12px 16px; display: none; flex-direction: column;
           /* Pinned to the viewport, not stretched to match a long page (e.g. the
              full Menu list) — without this, a flex row's default stretch makes
              the sidebar as tall as its content sibling, and margin-top:auto on
@@ -97,29 +99,32 @@ export default function AdminLayout() {
         }
         @media (min-width: 900px) { .admin-sidebar { display: flex; } }
 
-        .admin-sidebar-brand { display: flex; align-items: center; gap: 10px; padding: 4px 8px 20px; }
-        .admin-sidebar-badge {
-          width: 30px; height: 30px; border-radius: 50%; border: 1.5px solid var(--a-accent);
-          display: flex; align-items: center; justify-content: center;
-          font-family: var(--font-display); font-size: 12px; color: #fff; flex-shrink: 0;
+        .admin-awning {
+          height: 5px; margin: 0 -12px;
+          background: repeating-linear-gradient(90deg, #a13a2e 0 14px, var(--a-sidebar) 14px 28px);
         }
-        .admin-sidebar-name { margin: 0; font-family: var(--font-display); font-size: 14px; color: #fff; line-height: 1.1; }
-        .admin-sidebar-sub { margin: 0; font-size: 9px; color: #7f8c85; }
+        .admin-sidebar-brand { padding: 22px 10px 24px; }
+        .admin-sidebar-name {
+          margin: 0; font-family: var(--font-display); font-weight: 700; font-size: 21px;
+          letter-spacing: 0.14em; color: #faf8f3; line-height: 1;
+        }
+        .admin-sidebar-sub { margin: 5px 0 0; font-family: var(--font-display); font-style: italic; font-size: 12.5px; color: var(--a-sidebar-text); }
 
         .admin-nav-item {
-          display: flex; align-items: center; gap: 10px; padding: 9px 10px; border-radius: 6px;
-          font-size: 13px; color: #b7c2bc; text-decoration: none; background: none; border: none;
-          width: 100%; text-align: left; box-sizing: border-box;
+          display: flex; align-items: center; gap: 12px; min-height: 44px; padding: 0 12px; border-radius: 10px;
+          font-size: 15px; font-weight: 500; color: var(--a-sidebar-text); text-decoration: none; background: none; border: none;
+          width: 100%; text-align: left; box-sizing: border-box; font-family: var(--font-body);
         }
-        .admin-nav-item i { font-size: 16px; width: 16px; }
-        .admin-nav-item:hover { background: var(--a-sidebar-hover); }
-        .admin-nav-item.active { background: var(--a-sidebar-active); color: #fff; }
+        .admin-nav-item i { font-size: 19px; width: 20px; }
+        .admin-nav-item:hover { background: var(--a-sidebar-hover); color: #faf8f3; }
+        .admin-nav-item.active { background: var(--a-sidebar-active); color: #faf8f3; font-weight: 700; }
+        .admin-nav-item.active i { color: var(--a-accent); }
         .admin-logout { cursor: pointer; }
 
-        .admin-sidebar-footer { margin-top: auto; padding-top: 12px; border-top: 1px solid #2a3a32; }
-        .admin-sidebar-bell { padding: 2px 10px 8px; }
-        .admin-sidebar-user { font-size: 12px; color: #b7c2bc; padding: 6px 10px; overflow-wrap: anywhere; }
-        .admin-sidebar-user span { display: block; color: #7f8c85; font-size: 11px; }
+        .admin-sidebar-footer { margin-top: auto; padding-top: 12px; border-top: 1px solid rgba(250,248,243,0.14); }
+        .admin-sidebar-bell { padding: 4px 12px 8px; }
+        .admin-sidebar-user { font-size: 13px; font-weight: 600; color: #faf8f3; padding: 6px 12px; overflow-wrap: anywhere; }
+        .admin-sidebar-user span { display: block; color: var(--a-sidebar-text); font-size: 12px; font-weight: 400; }
 
         .admin-main { flex: 1; min-width: 0; }
         @media (min-width: 900px) { .admin-main { margin-left: var(--a-sidebar-w); } }
@@ -135,9 +140,9 @@ function MobileTopbar({ navItems, onLogout }) {
   return (
     <div className="admin-mobile-topbar-wrap">
       <div className="admin-mobile-topbar">
-        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-          <div className="admin-sidebar-badge" style={{ width: 26, height: 26, fontSize: 11 }}>G</div>
-          <span style={{ fontFamily: "var(--font-display)", fontSize: 14 }}>GARNERS</span>
+        <div style={{ display: "flex", alignItems: "baseline", gap: 8 }}>
+          <span style={{ fontFamily: "var(--font-display)", fontWeight: 700, fontSize: 18, letterSpacing: "0.14em" }}>GARNERS</span>
+          <span style={{ fontFamily: "var(--font-display)", fontStyle: "italic", fontSize: 12, color: "var(--a-sidebar-text)" }}>Shop console</span>
         </div>
         <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
           <NotificationBell />
@@ -170,8 +175,12 @@ function MobileTopbar({ navItems, onLogout }) {
             <i className="ti ti-book" aria-hidden="true" />
             <span>Guide</span>
           </a>
-          <div className="admin-sidebar-user" style={{ color: "#4d5852" }}>
-            {user?.name} <span style={{ color: "#8b9490" }}>{user?.email}</span>
+          <a href="/order" className="admin-nav-item">
+            <i className="ti ti-building-store" aria-hidden="true" />
+            <span>View shop</span>
+          </a>
+          <div className="admin-sidebar-user">
+            {user?.name} <span>{user?.email}</span>
           </div>
           <button className="admin-nav-item admin-logout" style={{ color: "var(--a-danger-text)" }} onClick={onLogout}>
             <i className="ti ti-logout" aria-hidden="true" />
@@ -182,17 +191,20 @@ function MobileTopbar({ navItems, onLogout }) {
 
       <style>{`
         .admin-mobile-topbar {
-          display: flex; background: var(--a-sidebar); color: #fff; height: var(--a-topbar-h);
-          align-items: center; justify-content: space-between; padding: 0 12px;
+          display: flex; background: var(--a-sidebar); color: #faf8f3; height: var(--a-topbar-h);
+          align-items: center; justify-content: space-between; padding: 0 12px 0 16px;
           position: sticky; top: 0; z-index: 30;
+          border-top: 5px solid transparent;
+          border-image: repeating-linear-gradient(90deg, #a13a2e 0 14px, var(--a-sidebar) 14px 28px) 5;
         }
         .admin-mobile-menu-btn {
-          border: none; background: none; color: #fff; font-size: 20px; padding: 4px; display: flex;
+          border: none; background: none; color: #faf8f3; font-size: 22px; width: 44px; height: 44px;
+          display: flex; align-items: center; justify-content: center;
         }
         .admin-mobile-panel {
           background: var(--a-sidebar); padding: 6px 10px 14px; position: sticky; top: var(--a-topbar-h); z-index: 29;
         }
-        .admin-mobile-panel .admin-sidebar-user { color: #b7c2bc; }
+
         @media (min-width: 900px) { .admin-mobile-topbar-wrap { display: none; } }
       `}</style>
     </div>
@@ -221,12 +233,12 @@ function MobileTabbar({ navItems }) {
         }
         @media (min-width: 900px) { .admin-mobile-tabbar { display: none; } }
         .admin-mobile-tab {
-          flex: 0 0 auto; min-width: 68px; display: flex; flex-direction: column;
-          align-items: center; justify-content: center; gap: 2px; font-size: 10px;
-          color: var(--a-text-muted); padding: 0 10px; text-decoration: none;
+          flex: 0 0 auto; min-width: 70px; display: flex; flex-direction: column;
+          align-items: center; justify-content: center; gap: 3px; font-size: 11.5px; font-weight: 600;
+          color: var(--a-text-secondary); padding: 0 10px; text-decoration: none;
         }
         .admin-mobile-tab.active { color: var(--a-green); }
-        .admin-mobile-tab i { font-size: 18px; }
+        .admin-mobile-tab i { font-size: 20px; }
       `}</style>
     </nav>
   );

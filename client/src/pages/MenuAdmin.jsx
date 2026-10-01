@@ -534,7 +534,6 @@ export default function AdminMenu() {
       )}
 
       <style>{`
-        .admin-section-title { font-size: 14px; font-weight: 500; margin-bottom: 10px; }
         .admin-two-col { display: grid; grid-template-columns: 1fr; gap: 18px; }
         @media (min-width: 900px) { .admin-two-col { grid-template-columns: 1.5fr 1fr; } }
         .admin-search { width: 100%; border: 1px solid var(--a-border); border-radius: 6px; padding: 8px 12px; font-size: 13px; font-family: var(--font-body); box-sizing: border-box; }
@@ -542,9 +541,6 @@ export default function AdminMenu() {
         .admin-btn-primary { padding: 10px; background: var(--a-green); color: #fff; border: none; border-radius: 6px; font-size: 13px; }
         .admin-btn-secondary { background: var(--a-bg); border: 1px solid var(--a-border); border-radius: 6px; font-size: 13px; }
         .admin-btn-sm { border: 1px solid var(--a-border); background: var(--a-panel); border-radius: 6px; padding: 6px 12px; font-size: 11.5px; white-space: nowrap; }
-        .admin-btn-xs { border: 1px solid var(--a-border); background: var(--a-panel); border-radius: 6px; padding: 5px 10px; font-size: 11.5px; white-space: nowrap; color: var(--a-text-secondary); }
-        .admin-btn-xs.danger { color: var(--a-danger-text); }
-        .admin-btn-xs.active { background: var(--a-bg); color: var(--a-text-primary); }
         .admin-photo-choose {
           display: flex; align-items: center; justify-content: center; gap: 6px;
           width: 100%; box-sizing: border-box; padding: 9px; margin-bottom: 10px;
@@ -627,7 +623,7 @@ export default function AdminMenu() {
         .admin-note { font-size: 11px; color: var(--a-text-secondary); background: var(--a-bg); border: 1px solid var(--a-border); border-radius: 8px; padding: 8px 10px; margin: -4px 0 10px; }
         .admin-recipe-editor { padding: 12px 14px; background: var(--a-bg); border-top: 1px solid var(--a-border); }
         .admin-inline-input { border: 1px solid var(--a-border); border-radius: 6px; padding: 5px 6px; font-size: 12px; }
-        .admin-link-btn { border: none; background: none; color: var(--a-danger-text); cursor: pointer; font-size: 12px; padding: 0; }
+        .admin-link-btn { border: none; background: none; color: var(--a-danger-text); cursor: pointer; font-size: 13px; font-weight: 600; padding: 8px 0; }
 
         .menu-modal-scrim {
           position: fixed; inset: 0; background: rgba(28,35,32,0.45);

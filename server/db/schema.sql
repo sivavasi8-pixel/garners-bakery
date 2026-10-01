@@ -91,6 +91,7 @@ create table if not exists orders (
   delivery_address text,
   delivery_fee numeric, -- null means "to be confirmed" (the outside-Whitefield zone, priced by Porter's live rate)
   customer_phone text, -- required for delivery orders so staff can reach the customer (e.g. the Porter-rate zone)
+  pickup_date date, -- the booked pickup/delivery day (India time); pickup_time holds the readable "Thu 1 Oct, 4:00 PM"
   created_at timestamptz not null default now()
 );
 

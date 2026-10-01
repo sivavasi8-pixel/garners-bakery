@@ -248,7 +248,6 @@ export default function AdminReports() {
       </div>
 
       <style>{`
-        .admin-section-title { font-size: 14px; font-weight: 500; margin-bottom: 10px; }
         .admin-two-col { display: grid; grid-template-columns: 1fr; gap: 18px; }
         @media (min-width: 900px) { .admin-two-col { grid-template-columns: 1.4fr 1fr; } }
         .admin-form-panel { background: var(--a-panel); border: 1px solid var(--a-border); border-radius: var(--a-radius); padding: 18px; }
@@ -256,7 +255,7 @@ export default function AdminReports() {
         .admin-btn-primary { background: var(--a-green); color: #fff; border: none; border-radius: 6px; font-size: 13px; }
         .admin-search { border: 1px solid var(--a-border); border-radius: 6px; padding: 7px 9px; font-size: 12px; box-sizing: border-box; }
         .admin-expense-form { display: flex; gap: 8px; margin-bottom: 14px; flex-wrap: wrap; }
-        .admin-link-btn { border: none; background: none; color: var(--a-danger-text); cursor: pointer; font-size: 11px; padding: 0; }
+        .admin-link-btn { border: none; background: none; color: var(--a-danger-text); cursor: pointer; font-size: 13px; font-weight: 600; padding: 8px 0; }
       `}</style>
     </AdminPage>
   );

@@ -20,13 +20,23 @@ export function CartProvider({ children }) {
 
   const addCustomItem = (entry) => setCart((prev) => [...prev, entry]);
 
+  // −/+ steppers: change a line's quantity by `delta`; a line that reaches 0 is removed.
+  const changeQty = (id, delta) =>
+    setCart((prev) =>
+      prev.flatMap((c) => {
+        if (c.id !== id) return [c];
+        const qty = c.qty + delta;
+        return qty > 0 ? [{ ...c, qty }] : [];
+      })
+    );
+
   const clearCart = () => setCart([]);
 
   const total = cart.reduce((sum, c) => sum + (c.price || 0) * c.qty, 0);
   const count = cart.reduce((n, c) => n + c.qty, 0);
 
   return (
-    <CartContext.Provider value={{ cart, setCart, addToCart, addCustomItem, clearCart, total, count }}>
+    <CartContext.Provider value={{ cart, setCart, addToCart, addCustomItem, changeQty, clearCart, total, count }}>
       {children}
     </CartContext.Provider>
   );

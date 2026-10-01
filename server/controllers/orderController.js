@@ -5,6 +5,7 @@ const menuItems = require("../data/menuItems");
 const asyncHandler = require("../middleware/asyncHandler");
 const { withTransaction } = require("../config/transaction");
 const { ZONES, calculateFee } = require("../data/deliveryZones");
+const { upcomingDays, validateSlot } = require("../data/slots");
 
 // The bakery is closed Mondays (Asia/Kolkata) — matches the static "closed on
 // Mondays" graphic that used to be posted by hand every week.
@@ -23,8 +24,9 @@ const MIN_CAKE_KG = 0.5;
 const MAX_CAKE_KG = 20;
 
 // Public (no auth) — the Order page checks this before anyone logs in.
+// Also returns the bookable days and time slots for checkout (server/data/slots.js).
 exports.getStoreStatus = (req, res) => {
-  res.json({ closedToday: isClosedToday(), zones: ZONES });
+  res.json({ closedToday: isClosedToday(), zones: ZONES, days: upcomingDays() });
 };
 
 // Turns the cart the browser sent into trusted order lines. Only the menu item id,
@@ -118,7 +120,7 @@ exports.getOrder = asyncHandler(async (req, res) => {
 });
 
 exports.createOrder = asyncHandler(async (req, res) => {
-  const { items, pickupTime, channel, paymentMethod, deliveryType, deliveryZone, deliveryAddress, customerPhone } = req.body;
+  const { items, pickupTime, pickupDate, pickupSlot, channel, paymentMethod, deliveryType, deliveryZone, deliveryAddress, customerPhone } = req.body;
   const validPayment = ["cash", "upi", "card"];
   if (paymentMethod && !validPayment.includes(paymentMethod)) {
     return res.status(400).json({ error: `paymentMethod must be one of ${validPayment.join(", ")}` });
@@ -145,6 +147,18 @@ exports.createOrder = asyncHandler(async (req, res) => {
   const order = await withTransaction(async (db) => {
     const { lines, itemsTotal } = await priceItems(items, db);
 
+    // Online orders book a real day and time slot (no Mondays, no past times, a
+    // day's notice for custom cakes). The POS can still pass free text like "Walk-in".
+    let pickupText = clip(pickupTime, 100);
+    let bookedDate = null;
+    if (isCustomer || pickupDate || pickupSlot) {
+      const hasCustomCake = lines.some((l) => l.size !== undefined);
+      const slot = validateSlot({ date: pickupDate, slot: pickupSlot, hasCustomCake });
+      if (slot.error) throw badRequest(slot.error);
+      pickupText = slot.text;
+      bookedDate = pickupDate;
+    }
+
     let deliveryFee = null;
     if (isDelivery) {
       const zone = ZONES[deliveryZone];
@@ -168,7 +182,8 @@ exports.createOrder = asyncHandler(async (req, res) => {
         customerId: isCustomer ? req.user.id : null,
         items: lines,
         total: itemsTotal + (deliveryFee || 0),
-        pickupTime: clip(pickupTime, 100),
+        pickupTime: pickupText,
+        pickupDate: bookedDate,
         channel: isCustomer ? "online" : channel === "online" ? "online" : "in-store",
         paymentMethod: paymentMethod || "cash",
         paymentStatus,

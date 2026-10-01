@@ -3,8 +3,10 @@ import { Link } from "react-router-dom";
 import { api } from "../api";
 import { AdminPage, StatusPill } from "../components/admin/AdminUI";
 import { ZONES } from "../deliveryZones";
+import { nextStep } from "../orderSteps";
 
 const statusOptions = ["placed", "baking", "ready", "delivered", "cancelled"];
+const REFRESH_MS = 30000;
 
 const zoneLabel = (id) => ZONES.find((z) => z.id === id)?.label || id;
 const deliveryFeeLabel = (o) => {
@@ -12,18 +14,98 @@ const deliveryFeeLabel = (o) => {
   if (o.deliveryFee === 0) return "free delivery";
   return `₹${o.deliveryFee} delivery fee`;
 };
+const money = (n) => `₹${Number(n || 0).toLocaleString("en-IN")}`;
+const istDay = (d) => new Date(d).toLocaleDateString("en-CA", { timeZone: "Asia/Kolkata" });
 
 const itemsLabel = (items) =>
   items
-    .map((it) => `${it.name}${it.qty > 1 ? ` x${it.qty}` : ""}${it.note ? ` — "${it.note}"` : ""}`)
+    .map((it) => `${it.qty > 1 ? `${it.qty} × ` : ""}${it.name}`)
     .join(", ");
+
+const COLUMNS = [
+  { status: "placed", title: "New", color: "#8a8474" },
+  { status: "baking", title: "Baking", color: "#c98a1a" },
+  { status: "ready", title: "Ready", color: "#2f7a3b" },
+  { status: "done", title: "Done today", color: "#1f3d2e" }
+];
+const CHANNEL_FILTERS = [
+  { id: "all", label: "All" },
+  { id: "online", label: "Online" },
+  { id: "in-store", label: "In-store" },
+  { id: "delivery", label: "Delivery" }
+];
+
+function OrderCard({ o, busy, onAdvance, onPaid, onCancel }) {
+  const [confirming, setConfirming] = useState(false);
+  const next = nextStep(o);
+  const notes = o.items.filter((it) => it.note).map((it) => it.note);
+  const finished = o.status === "delivered" || o.status === "cancelled";
+  return (
+    <article className={`board-card${o.status === "cancelled" ? " cancelled" : ""}`}>
+      <div className="board-card-head">
+        <span className="board-card-title">#{o.id} · {o.customerName}</span>
+        <span className="board-card-when">{o.pickupTime || "—"}</span>
+      </div>
+      <p className="board-card-items">{itemsLabel(o.items)}</p>
+      {notes.map((n, i) => <p key={i} className="board-card-note">“{n}”</p>)}
+      <div className="board-tags">
+        <span className="board-tag">
+          {o.deliveryType === "delivery" ? `Delivery · ${zoneLabel(o.deliveryZone)}` : o.channel === "in-store" ? "In-store" : "Pickup"}
+        </span>
+        {o.status === "cancelled" ? (
+          <StatusPill status="cancelled" />
+        ) : o.paymentStatus === "paid" ? (
+          <StatusPill status="paid" label={o.paymentMethod ? `Paid · ${o.paymentMethod}` : "Paid"} />
+        ) : (
+          <StatusPill status="unpaid" label={o.paymentMethod === "cash" ? "Cash due" : o.paymentMethod ? `${o.paymentMethod.toUpperCase()} · confirm` : "Unpaid"} />
+        )}
+      </div>
+      {(o.customerPhone || (o.deliveryType === "delivery" && o.deliveryAddress)) && (
+        <p className="board-card-contact">
+          {o.customerPhone && <a href={`tel:${o.customerPhone.replace(/[^\d+]/g, "")}`} className="board-tel">{o.customerPhone}</a>}
+          {o.deliveryType === "delivery" && o.deliveryAddress && <span>{o.deliveryAddress} · {deliveryFeeLabel(o)}</span>}
+        </p>
+      )}
+      <div className="board-card-foot">
+        <span className="board-card-total">{money(o.total)}</span>
+        <div className="board-card-actions">
+          {!finished && o.paymentStatus !== "paid" && (
+            <button type="button" className="a-btn quiet" disabled={busy} onClick={onPaid}>Mark paid</button>
+          )}
+          {next && (
+            <button type="button" className="a-btn primary" disabled={busy} onClick={() => onAdvance(next.status)}>
+              {busy ? "Saving…" : next.label}
+            </button>
+          )}
+        </div>
+      </div>
+      {!finished && (
+        <div className="board-card-more">
+          <Link to={`/receipt/${o.id}`} className="admin-link-btn">Receipt</Link>
+          {confirming ? (
+            <span className="board-confirm">
+              Return stock and cancel?
+              <button type="button" className="admin-link-btn danger" onClick={() => { setConfirming(false); onCancel(); }}>Yes, cancel</button>
+              <button type="button" className="admin-link-btn muted" onClick={() => setConfirming(false)}>No</button>
+            </span>
+          ) : (
+            <button type="button" className="admin-link-btn danger" onClick={() => setConfirming(true)}>Cancel order</button>
+          )}
+        </div>
+      )}
+    </article>
+  );
+}
 
 export default function AdminOrders() {
   const [orders, setOrders] = useState(null);
   const [error, setError] = useState(null);
   const [actionError, setActionError] = useState(null);
+  const [view, setView] = useState("board");
+  const [channel, setChannel] = useState("all");
   const [statusFilter, setStatusFilter] = useState("all");
   const [search, setSearch] = useState("");
+  const [busyId, setBusyId] = useState(null);
   const [editingPickupId, setEditingPickupId] = useState(null);
   const [pickupDraft, setPickupDraft] = useState("");
 
@@ -31,23 +113,22 @@ export default function AdminOrders() {
 
   useEffect(() => {
     load();
+    // New online orders show up without a manual refresh.
+    const id = setInterval(load, REFRESH_MS);
+    return () => clearInterval(id);
   }, []);
 
-  const runAction = async (fn) => {
+  const runAction = async (id, fn) => {
     setActionError(null);
+    setBusyId(id);
     try {
       await fn();
       await load();
     } catch (err) {
       setActionError(err.message);
+    } finally {
+      setBusyId(null);
     }
-  };
-
-  const handleStatusChange = (id, status) => runAction(() => api.updateOrderStatus(id, status));
-  const markPaid = (id) => runAction(() => api.updateOrderPayment(id, "paid"));
-  const handleCancel = (order) => {
-    if (!confirm(`Cancel order #${order.id}? Any deducted stock will be restocked.`)) return;
-    runAction(() => api.cancelOrder(order.id));
   };
 
   const startPickupEdit = (order) => {
@@ -55,178 +136,232 @@ export default function AdminOrders() {
     setPickupDraft(order.pickupTime || "");
   };
   const savePickup = (id) =>
-    runAction(async () => {
+    runAction(id, async () => {
       await api.updateOrderPickupTime(id, pickupDraft);
       setEditingPickupId(null);
     });
 
-  if (error) return <AdminPage title="Orders"><p style={{ color: "var(--a-danger-text)" }}>Couldn't load orders: {error}</p></AdminPage>;
+  if (error) return <AdminPage title="Orders"><p style={{ color: "var(--a-danger-text)" }}>Couldn't load orders: {error}. Refresh to try again.</p></AdminPage>;
   if (!orders) return <AdminPage title="Orders"><p style={{ color: "var(--a-text-secondary)" }}>Loading…</p></AdminPage>;
 
   const q = search.trim().toLowerCase();
-  const filtered = orders.filter((o) => {
-    if (statusFilter !== "all" && o.status !== statusFilter) return false;
-    if (!q) return true;
-    return o.customerName.toLowerCase().includes(q) || String(o.id).includes(q);
+  const matches = (o) => {
+    if (q && !(o.customerName.toLowerCase().includes(q) || String(o.id).includes(q) || (o.customerPhone || "").replace(/\s/g, "").includes(q.replace(/\s/g, "")))) return false;
+    if (channel === "online" && o.channel !== "online") return false;
+    if (channel === "in-store" && o.channel !== "in-store") return false;
+    if (channel === "delivery" && o.deliveryType !== "delivery") return false;
+    return true;
+  };
+  const today = istDay(Date.now());
+  const columnOrders = (status) =>
+    orders.filter(matches).filter((o) =>
+      status === "done" ? (o.status === "delivered" || o.status === "cancelled") && istDay(o.createdAt) === today : o.status === status
+    );
+
+  const listed = orders.filter(matches).filter((o) => statusFilter === "all" || o.status === statusFilter);
+
+  const actionsFor = (o) => ({
+    busy: busyId === o.id,
+    onAdvance: (status) => runAction(o.id, () => api.updateOrderStatus(o.id, status)),
+    onPaid: () => runAction(o.id, () => api.updateOrderPayment(o.id, "paid")),
+    onCancel: () => runAction(o.id, () => api.cancelOrder(o.id))
   });
 
-  const PickupCell = ({ o }) =>
-    editingPickupId === o.id ? (
-      <div style={{ display: "flex", gap: 4 }}>
-        <input
-          value={pickupDraft}
-          onChange={(e) => setPickupDraft(e.target.value)}
-          className="admin-pickup-input"
-        />
-        <button onClick={() => savePickup(o.id)} className="admin-link-btn">Save</button>
-        <button onClick={() => setEditingPickupId(null)} className="admin-link-btn muted">Cancel</button>
+  return (
+    <AdminPage
+      eyebrow={new Date().toLocaleDateString("en-IN", { timeZone: "Asia/Kolkata", weekday: "long", day: "numeric", month: "long" })}
+      title="Orders"
+      actions={
+        <div className="view-toggle" role="group" aria-label="View">
+          <button type="button" aria-pressed={view === "board"} className={view === "board" ? "on" : ""} onClick={() => setView("board")}>Board</button>
+          <button type="button" aria-pressed={view === "list"} className={view === "list" ? "on" : ""} onClick={() => setView("list")}>All orders</button>
+        </div>
+      }
+    >
+      <div className="admin-filters">
+        <label className="admin-search">
+          <i className="ti ti-search" aria-hidden="true" />
+          <input
+            id="orders-search"
+            placeholder="Name, order # or phone"
+            aria-label="Search orders"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+          />
+        </label>
+        <div className="chip-row" role="group" aria-label="Filter by channel">
+          {CHANNEL_FILTERS.map((f) => (
+            <button key={f.id} type="button" aria-pressed={channel === f.id} className={`filter-chip${channel === f.id ? " on" : ""}`} onClick={() => setChannel(f.id)}>
+              {f.label}
+            </button>
+          ))}
+        </div>
+        {view === "list" && (
+          <select className="admin-select-sm" aria-label="Filter by status" value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)}>
+            <option value="all">All statuses</option>
+            {statusOptions.map((s) => <option key={s} value={s}>{s}</option>)}
+          </select>
+        )}
       </div>
-    ) : (
-      <span>
-        {o.pickupTime || "—"}
-        <button onClick={() => startPickupEdit(o)} className="admin-link-btn" style={{ marginLeft: 6 }}>edit</button>
-      </span>
-    );
 
-  const FulfillmentCell = ({ o }) => (
-    <div>
-      <p style={{ margin: "0 0 2px", fontSize: 11, fontWeight: 600, color: "var(--a-text-secondary)" }}>
-        {o.deliveryType === "delivery" ? "Delivery" : "Pickup"}
-      </p>
-      <PickupCell o={o} />
-      {o.deliveryType === "delivery" && (
-        <div style={{ marginTop: 4, fontSize: 11, color: "var(--a-text-secondary)" }}>
-          <p style={{ margin: 0 }}>{zoneLabel(o.deliveryZone)} · {deliveryFeeLabel(o)}</p>
-          <p style={{ margin: 0, overflowWrap: "anywhere" }}>{o.deliveryAddress}</p>
+      {actionError && <p className="orders-error" role="alert">{actionError}</p>}
+
+      {view === "board" ? (
+        <div className="board">
+          {COLUMNS.map((col) => {
+            const list = columnOrders(col.status);
+            return (
+              <section key={col.status} className="board-col" aria-labelledby={`col-${col.status}`}>
+                <div className="board-col-head">
+                  <h2 id={`col-${col.status}`}>
+                    <span className="board-dot" style={{ background: col.color }} aria-hidden="true" />
+                    {col.title}
+                  </h2>
+                  <span className="board-count">{list.length}</span>
+                </div>
+                {list.map((o) => <OrderCard key={o.id} o={o} {...actionsFor(o)} />)}
+                {list.length === 0 && (
+                  <p className="board-empty">
+                    {col.status === "placed" ? "New orders land here." : col.status === "done" ? "Collected and delivered orders land here." : "Nothing here right now."}
+                  </p>
+                )}
+              </section>
+            );
+          })}
+        </div>
+      ) : (
+        <div className="admin-table-wrap">
+          <table className="admin-data-table">
+            <thead>
+              <tr>
+                <th>Order</th><th>Items</th><th>Total</th><th>When</th><th>Payment</th><th>Status</th>
+              </tr>
+            </thead>
+            <tbody>
+              {listed.map((o) => (
+                <tr key={o.id}>
+                  <td>
+                    <b>#{o.id}</b><br />
+                    {o.customerName}
+                    {o.customerPhone && <><br /><a href={`tel:${o.customerPhone.replace(/[^\d+]/g, "")}`} className="board-tel">{o.customerPhone}</a></>}
+                    <br /><Link to={`/receipt/${o.id}`} className="admin-receipt-link">Receipt</Link>
+                  </td>
+                  <td style={{ maxWidth: 280 }}>
+                    {itemsLabel(o.items)}
+                    {o.items.filter((it) => it.note).map((it, i) => <div key={i} className="muted">“{it.note}”</div>)}
+                  </td>
+                  <td>{money(o.total)}</td>
+                  <td style={{ minWidth: 170 }}>
+                    <div className="muted" style={{ fontWeight: 600 }}>{o.deliveryType === "delivery" ? "Delivery" : "Pickup"}</div>
+                    {editingPickupId === o.id ? (
+                      <div style={{ display: "flex", gap: 6, alignItems: "center", flexWrap: "wrap" }}>
+                        <input
+                          id={`pickup-${o.id}`}
+                          aria-label="Pickup time"
+                          value={pickupDraft}
+                          onChange={(e) => setPickupDraft(e.target.value)}
+                          className="admin-pickup-input"
+                        />
+                        <button type="button" onClick={() => savePickup(o.id)} className="admin-link-btn">Save</button>
+                        <button type="button" onClick={() => setEditingPickupId(null)} className="admin-link-btn muted">Cancel</button>
+                      </div>
+                    ) : (
+                      <span>
+                        {o.pickupTime || "—"}
+                        <button type="button" onClick={() => startPickupEdit(o)} className="admin-link-btn" style={{ marginLeft: 8 }}>Edit</button>
+                      </span>
+                    )}
+                    {o.deliveryType === "delivery" && (
+                      <div className="muted" style={{ overflowWrap: "anywhere" }}>{zoneLabel(o.deliveryZone)} · {deliveryFeeLabel(o)}<br />{o.deliveryAddress}</div>
+                    )}
+                  </td>
+                  <td>
+                    {o.paymentStatus === "paid" ? (
+                      <StatusPill status="paid" label={o.paymentMethod ? `Paid · ${o.paymentMethod}` : "Paid"} />
+                    ) : o.status === "cancelled" ? (
+                      <span className="muted">—</span>
+                    ) : (
+                      <button type="button" onClick={() => runAction(o.id, () => api.updateOrderPayment(o.id, "paid"))} className="admin-btn-xs">Mark paid</button>
+                    )}
+                  </td>
+                  <td><StatusPill status={o.status} /></td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+          {listed.length === 0 && <p className="board-empty" style={{ margin: 16 }}>No orders match. Try clearing the search or filters.</p>}
         </div>
       )}
-      {o.customerPhone && (
-        <p style={{ margin: "4px 0 0", fontSize: 11 }}>
-          <a href={`tel:${o.customerPhone}`} style={{ color: "var(--a-green)" }}>📞 {o.customerPhone}</a>
-        </p>
-      )}
-    </div>
-  );
-
-  const StatusCell = ({ o }) => (
-    <div style={{ display: "flex", alignItems: "center", gap: 6, flexWrap: "wrap" }}>
-      <StatusPill status={o.status} />
-      {o.status !== "delivered" && o.status !== "cancelled" && (
-        <>
-          <select
-            className="admin-select-sm"
-            value={o.status}
-            onChange={(e) => handleStatusChange(o.id, e.target.value)}
-          >
-            {statusOptions.filter((s) => s !== "cancelled").map((s) => <option key={s} value={s}>{s}</option>)}
-          </select>
-          <button onClick={() => handleCancel(o)} className="admin-link-btn danger">cancel</button>
-        </>
-      )}
-    </div>
-  );
-
-  const PaymentCell = ({ o }) =>
-    o.paymentStatus === "paid" ? (
-      <span style={{ fontSize: 11.5, color: "var(--a-success-text)" }}>paid ({o.paymentMethod})</span>
-    ) : (
-      <button onClick={() => markPaid(o.id)} className="admin-btn-xs">Mark paid</button>
-    );
-
-  return (
-    <AdminPage eyebrow={`${orders.length} total. Search by customer name or order #`} title="Orders">
-      <div className="admin-filters">
-        <input
-          className="admin-search"
-          placeholder="Search customer or order #..."
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-        />
-        <select className="admin-select-sm" value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)}>
-          <option value="all">All statuses</option>
-          {statusOptions.map((s) => <option key={s} value={s}>{s}</option>)}
-        </select>
-      </div>
-
-      {actionError && <p style={{ fontSize: 13, color: "var(--a-danger-text)", marginBottom: 14 }}>{actionError}</p>}
-
-      {/* Desktop table */}
-      <div className="admin-table-wrap desktop-only">
-        <table className="admin-data-table">
-          <thead>
-            <tr>
-              <th>Order</th><th>Items</th><th>Total</th><th>Fulfillment</th><th>Payment</th><th>Status</th>
-            </tr>
-          </thead>
-          <tbody>
-            {filtered.map((o) => (
-              <tr key={o.id}>
-                <td>
-                  #{o.id}<br />
-                  <span style={{ color: "var(--a-text-secondary)" }}>{o.customerName}</span>{" "}
-                  <Link to={`/receipt/${o.id}`} className="admin-receipt-link">receipt</Link>
-                </td>
-                <td style={{ maxWidth: 260 }}>{itemsLabel(o.items)}</td>
-                <td>₹{o.total}</td>
-                <td style={{ minWidth: 150 }}><FulfillmentCell o={o} /></td>
-                <td><PaymentCell o={o} /></td>
-                <td><StatusCell o={o} /></td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-        {filtered.length === 0 && <p style={{ padding: 14, fontSize: 13, color: "var(--a-text-secondary)" }}>No orders match.</p>}
-      </div>
-
-      {/* Mobile cards */}
-      <div className="admin-card-row mobile-only">
-        {filtered.map((o) => (
-          <div key={o.id} className="admin-order-card">
-            <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 4, flexWrap: "wrap", gap: 6 }}>
-              <p style={{ margin: 0, fontSize: 13 }}>
-                #{o.id} · {o.customerName} <Link to={`/receipt/${o.id}`} className="admin-receipt-link">receipt</Link>
-              </p>
-              <span style={{ fontSize: 13, fontWeight: 500 }}>₹{o.total}</span>
-            </div>
-            <p style={{ margin: "0 0 6px", fontSize: 11.5, color: "var(--a-text-secondary)" }}>{itemsLabel(o.items)}</p>
-            <div style={{ margin: "0 0 8px" }}><FulfillmentCell o={o} /></div>
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 8 }}>
-              <PaymentCell o={o} />
-              <StatusCell o={o} />
-            </div>
-          </div>
-        ))}
-        {filtered.length === 0 && <p style={{ fontSize: 13, color: "var(--a-text-secondary)" }}>No orders match.</p>}
-      </div>
 
       <style>{`
-        .admin-filters { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 14px; }
-        .admin-search {
-          flex: 1; min-width: 180px; border: 1px solid var(--a-border); border-radius: 6px;
-          padding: 8px 12px; font-size: 13px;
+        .view-toggle { display: inline-flex; background: var(--a-panel-sunk); border-radius: 12px; padding: 4px; gap: 4px; }
+        .view-toggle button {
+          min-height: 38px; padding: 0 16px; border: 0; border-radius: 9px; background: transparent;
+          color: var(--a-text-secondary); font: 600 14px var(--font-body);
         }
-        .admin-table-wrap { background: var(--a-panel); border: 1px solid var(--a-border); border-radius: var(--a-radius); overflow-x: auto; }
-        .admin-data-table { width: 100%; font-size: 12.5px; }
-        .admin-data-table th { text-align: left; padding: 8px 12px; font-weight: 500; color: var(--a-text-secondary); border-bottom: 1px solid var(--a-border); white-space: nowrap; }
-        .admin-data-table td { padding: 9px 12px; border-bottom: 1px solid var(--a-border); vertical-align: top; }
+        .view-toggle button.on { background: var(--a-panel); color: var(--a-green); box-shadow: 0 1px 2px rgba(38,36,31,0.12); }
+
+        .admin-filters { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; margin-bottom: 18px; }
+        .admin-search {
+          flex: 1 1 240px; max-width: 360px; display: flex; align-items: center; gap: 8px; min-height: 44px; padding: 0 12px;
+          border: 1px solid var(--a-border); border-radius: 12px; background: var(--a-panel); color: var(--a-text-secondary);
+        }
+        .admin-search input { flex: 1; min-width: 0; border: 0; outline: 0; background: transparent; font: 400 14px var(--font-body); color: var(--a-text-primary); }
+        .admin-search:focus-within { border-color: var(--a-green); }
+        .chip-row { display: flex; gap: 8px; flex-wrap: wrap; }
+        .filter-chip {
+          min-height: 44px; padding: 0 16px; border-radius: 999px; border: 1px solid var(--a-border);
+          background: var(--a-panel); color: var(--a-text-primary); font: 600 14px var(--font-body);
+        }
+        .filter-chip.on { background: var(--a-green); border-color: var(--a-green); color: #faf8f3; }
+        .orders-error { color: var(--a-danger-text); font-weight: 600; margin: 0 0 14px; }
+
+        .board { display: grid; grid-template-columns: minmax(0, 1fr); gap: 16px; align-items: start; }
+        @media (min-width: 760px) { .board { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+        @media (min-width: 1200px) { .board { grid-template-columns: repeat(4, minmax(0, 1fr)); } }
+        .board-col { background: var(--a-panel-sunk); border-radius: 16px; padding: 12px; display: flex; flex-direction: column; gap: 10px; min-width: 0; }
+        .board-col-head { display: flex; justify-content: space-between; align-items: center; padding: 4px 6px; }
+        .board-col-head h2 { margin: 0; font: 700 15px var(--font-body); display: flex; align-items: center; gap: 8px; }
+        .board-dot { width: 10px; height: 10px; border-radius: 5px; }
+        .board-count { font-size: 13px; font-weight: 700; color: var(--a-text-secondary); }
+        .board-empty {
+          margin: 0; padding: 18px 10px; text-align: center; font-size: 13px; color: var(--a-text-secondary);
+          border: 1px dashed var(--a-border); border-radius: 12px;
+        }
+
+        .board-card {
+          background: var(--a-panel); border: 1px solid var(--a-border); border-radius: 12px; padding: 14px;
+          display: flex; flex-direction: column; gap: 8px;
+        }
+        .board-card.cancelled { opacity: 0.7; }
+        .board-card-head { display: flex; justify-content: space-between; align-items: baseline; gap: 10px; }
+        .board-card-title { font-weight: 700; font-size: 15px; }
+        .board-card-when { font-size: 13px; font-weight: 600; text-align: right; }
+        .board-card-items { margin: 0; font-size: 14px; line-height: 1.4; overflow-wrap: anywhere; }
+        .board-card-note {
+          margin: 0; font-size: 13px; font-style: italic; color: #6b4a32; background: #f3e9d7; border-radius: 8px; padding: 6px 8px;
+        }
+        .board-tags { display: flex; gap: 6px; flex-wrap: wrap; align-items: center; }
+        .board-tag { font-size: 12px; font-weight: 600; color: var(--a-neutral-text); background: var(--a-neutral-bg); border-radius: 6px; padding: 4px 8px; }
+        .board-card-contact { margin: 0; font-size: 13px; color: var(--a-text-secondary); display: flex; flex-direction: column; gap: 2px; overflow-wrap: anywhere; }
+        .board-card-foot { display: flex; justify-content: space-between; align-items: center; gap: 8px; flex-wrap: wrap; margin-top: 2px; }
+        .board-card-total { font-weight: 700; font-size: 15px; }
+        .board-card-actions { display: flex; gap: 6px; flex-wrap: wrap; }
+        .board-card-more { display: flex; justify-content: space-between; align-items: center; gap: 8px; flex-wrap: wrap; border-top: 1px solid var(--a-border-soft); margin-top: 2px; }
+        .board-tel { color: var(--a-green); font-weight: 600; text-decoration: none; }
+        .board-confirm { display: inline-flex; gap: 10px; align-items: center; font-size: 13px; flex-wrap: wrap; }
+
+        .admin-table-wrap { background: var(--a-panel); border: 1px solid var(--a-border); border-radius: var(--a-radius-lg); overflow-x: auto; }
+        .admin-data-table { width: 100%; font-size: 14px; }
+        .admin-data-table th { text-align: left; padding: 12px 14px; font-weight: 600; font-size: 13px; color: var(--a-text-secondary); border-bottom: 1px solid var(--a-border); white-space: nowrap; }
+        .admin-data-table td { padding: 12px 14px; border-bottom: 1px solid var(--a-border-soft); vertical-align: top; line-height: 1.45; }
         .admin-data-table tr:last-child td { border-bottom: none; }
-        .admin-select-sm { border: 1px solid var(--a-border); border-radius: 6px; padding: 5px 8px; font-size: 12px; background: var(--a-panel); }
-        .admin-btn-xs { font-size: 11px; padding: 3px 8px; border: 1px solid var(--a-border); border-radius: 6px; background: var(--a-panel); }
-        .admin-receipt-link { font-size: 11px; color: var(--a-green); }
-        .admin-pickup-input { font-size: 12px; padding: 2px 6px; border: 1px solid var(--a-border); border-radius: 4px; width: 90px; }
-        .admin-link-btn { border: none; background: none; color: var(--a-green); cursor: pointer; font-size: 11px; padding: 0; }
+        .admin-data-table .muted { color: var(--a-text-secondary); font-size: 13px; }
+        .admin-receipt-link { font-size: 13px; font-weight: 600; color: var(--a-green); }
+        .admin-pickup-input { min-height: 36px; font-size: 14px; padding: 0 8px; border: 1px solid var(--a-border); border-radius: 8px; width: 160px; }
+        .admin-link-btn { border: none; background: none; color: var(--a-green); cursor: pointer; font-size: 13px; font-weight: 600; padding: 8px 0; }
         .admin-link-btn.muted { color: var(--a-text-muted); }
         .admin-link-btn.danger { color: var(--a-danger-text); }
-
-        .admin-card-row { display: flex; flex-direction: column; gap: 8px; }
-        .admin-order-card { background: var(--a-panel); border: 1px solid var(--a-border); border-radius: var(--a-radius); padding: 12px; }
-
-        .desktop-only { display: none; }
-        .mobile-only { display: block; }
-        @media (min-width: 900px) {
-          .desktop-only { display: block; }
-          .mobile-only { display: none; }
-        }
       `}</style>
     </AdminPage>
   );

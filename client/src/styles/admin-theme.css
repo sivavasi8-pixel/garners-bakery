@@ -1,36 +1,74 @@
 :root {
-  /* Owner/staff backend: clean software system, distinct from the warm
-     retail storefront. Cooler neutrals, tighter density, functional color
-     use (status/role only). Brand green stays the one identity anchor. */
+  /* Owner/staff console. Same GARNERS brand as the storefront (forest green,
+     warm paper, kraft, awning red) but calmer and denser: colour is used for
+     status, not decoration. Every admin page styles itself from these tokens,
+     so changing them restyles the whole console. */
   --a-ink: #1c2b24;
   --a-green: #1f3d2e;
-  --a-bg: #f4f5f3;
+  --a-green-soft: #e8efe9;
+  --a-bg: #f5f3ee;
   --a-panel: #ffffff;
-  --a-sidebar: #182620;
-  --a-sidebar-hover: #223327;
-  --a-sidebar-active: #2c4234;
-  --a-text-primary: #1c2320;
-  --a-text-secondary: #6b7570;
-  --a-text-muted: #99a19c;
-  --a-border: #e3e5e1;
-  --a-accent: #b8925a;
-  --a-success-bg: #e6f2e3;
-  --a-success-text: #2c5c26;
-  --a-warning-bg: #faf0d9;
-  --a-warning-text: #8a5a12;
-  --a-danger-bg: #fbe9e7;
-  --a-danger-text: #a13a2e;
-  --a-radius: 8px;
-  --a-sidebar-w: 220px;
-  --a-topbar-h: 56px;
-  --a-tabbar-h: 58px;
+  --a-panel-sunk: #edeae2;
+  --a-sidebar: #1f3d2e;
+  --a-sidebar-hover: #284b39;
+  --a-sidebar-active: rgba(250, 248, 243, 0.12);
+  --a-sidebar-text: #c7d4cb;
+  --a-text-primary: #26241f;
+  --a-text-secondary: #6e6a5e;
+  --a-text-muted: #8a8474;
+  --a-border: #e4dfd2;
+  --a-border-soft: #efebe2;
+  --a-accent: #c9a063;
+  --a-success-bg: #dceedc;
+  --a-success-text: #1f5a28;
+  --a-warning-bg: #fbe7c6;
+  --a-warning-text: #7a4f0e;
+  --a-danger-bg: #f7e9e6;
+  --a-danger-text: #8e2f24;
+  --a-neutral-bg: #ece8dd;
+  --a-neutral-text: #3f3b33;
+  --a-radius: 12px;
+  --a-radius-lg: 14px;
+  --a-sidebar-w: 240px;
+  --a-topbar-h: 58px;
+  --a-tabbar-h: 60px;
 }
 
 .admin-root {
-  font-size: 13px;
+  font-size: 14px;
   color: var(--a-text-primary);
   background: var(--a-bg);
+  font-variant-numeric: tabular-nums;
 }
 .admin-root table { border-collapse: collapse; width: 100%; }
-.admin-root button, .admin-root select, .admin-root input { font-family: var(--font-body); }
+.admin-root button, .admin-root select, .admin-root input, .admin-root textarea { font-family: var(--font-body); }
 .admin-root button { cursor: pointer; }
+
+/* Shared admin buttons — pages can use these instead of one-off inline styles. */
+.a-btn {
+  display: inline-flex; align-items: center; justify-content: center; gap: 6px;
+  min-height: 40px; padding: 0 14px; border-radius: 10px; font-size: 14px; font-weight: 700;
+  border: 1px solid var(--a-green); background: var(--a-panel); color: var(--a-green);
+  text-decoration: none; white-space: nowrap;
+}
+.a-btn:hover { background: var(--a-green-soft); }
+.a-btn.primary { background: var(--a-green); color: #faf8f3; border-color: var(--a-green); }
+.a-btn.primary:hover { background: #284b39; }
+.a-btn.quiet { border-color: var(--a-border); color: var(--a-text-primary); font-weight: 600; }
+.a-btn.danger { border-color: var(--a-danger-bg); background: var(--a-danger-bg); color: var(--a-danger-text); }
+.a-btn:disabled { opacity: 0.55; cursor: default; }
+
+/* Small controls shared by every admin page (previously copied into each page). */
+.admin-section-title { font-size: 16px; font-weight: 700; margin: 0 0 12px; }
+.admin-select-sm {
+  min-height: 40px; border: 1px solid var(--a-border); border-radius: 10px; padding: 0 10px;
+  font-size: 14px; background: var(--a-panel); color: var(--a-text-primary);
+}
+.admin-btn-xs {
+  min-height: 38px; padding: 0 12px; font-size: 13px; font-weight: 600; white-space: nowrap;
+  border: 1px solid var(--a-border); border-radius: 10px; background: var(--a-panel); color: var(--a-text-primary);
+}
+.admin-btn-xs:hover { border-color: var(--a-green); color: var(--a-green); }
+.admin-btn-xs.danger { color: var(--a-danger-text); }
+.admin-btn-xs.danger:hover { border-color: var(--a-danger-text); }
+.admin-btn-xs.active { background: var(--a-green-soft); border-color: var(--a-green); color: var(--a-green); }

@@ -152,11 +152,12 @@ These all used to be view-only (or database-only) — now:
 
 ### Order lifecycle: search, status, cancellation
 
-- **`/orders`** (owner/staff) is the full order list — search by customer
-  name or order #, filter by status, advance status (placed → baking →
-  ready → delivered), mark paid, edit pickup time, or cancel — all from one
-  screen. The Dashboard's "Order queue" only shows the 5 most recent; this
-  is everything.
+- **`/orders`** (owner/staff) opens as a **board**: New → Baking → Ready →
+  Done today columns, one button per card to move it along, plus Mark paid
+  and Cancel. Search by name, order # or phone, and filter by channel. The
+  **All orders** view is the full history as a table (filter by status,
+  edit pickup time). Both refresh every 30 seconds. The Dashboard
+  (`/dashboard`) shows the in-progress queue, soonest pickup first.
 - **Cancellation** (`PATCH /api/orders/:id/cancel`) is available to a
   customer only for their own order and only while it's still `placed`
   (once baking starts, they're told to contact the shop); owner/staff can
@@ -200,10 +201,34 @@ owner/staff can open any.
 
 ### Custom cakes
 
-The "Custom order" tab on the Order page is a real form now (size, flavor,
-message, needed-by date), priced off the `Custom cake` menu item's per-kg
-price. The cake message/date get stored as free text in the order's `items`
-JSON (`note` field) — shown wherever order items are listed.
+The "Custom cake" tab on the menu is a form (size, flavour, message), priced
+off the `Custom cake` menu item's per-kg price. The message is stored in the
+order's `items` JSON (`note` field) and shown wherever order items are listed.
+The day comes from the checkout's day/time picker; custom cakes need at least
+a day's notice (`CUSTOM_CAKE_LEAD_DAYS` in `server/data/slots.js`).
+
+### Pickup/delivery slots and phone numbers
+
+Checkout books a real **day and time slot** instead of free text. The slots,
+how far ahead people can book and the same-day notice live in one file,
+`server/data/slots.js` (currently 9 AM – 8 PM, every 30 minutes, up to 6
+days ahead, 45 minutes' notice for a same-day slot). The server rejects
+Mondays, past times and slots that aren't on the list.
+`GET /api/orders/store-status` returns the bookable `days` for checkout.
+
+Customers give a **phone number** at signup; checkout pre-fills it. It's
+required for delivery orders and optional for pickup and at the POS
+(`orders.customer_phone`), and staff can tap it to call from the Orders board.
+
+New columns (`users.phone`, `orders.customer_phone`, `orders.pickup_date`)
+are added automatically when the server starts (`server/db/migrate.js`), so
+an existing database (your Neon one) needs no SQL run by hand.
+
+### Routes
+
+The root URL redirects to the menu (`/order`). The owner/staff console starts
+at **`/dashboard`**; owner and staff are sent there after logging in, and
+unknown addresses show a "Page not found" page with a link to the menu.
 
 ### Expenses & profit
 

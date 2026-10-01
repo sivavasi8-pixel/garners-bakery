@@ -3,6 +3,7 @@ const path = require("path");
 const fs = require("fs");
 const express = require("express");
 const { securityHeaders, rateLimit } = require("./middleware/security");
+const { migrate } = require("./db/migrate");
 
 const menuRoutes = require("./routes/menuRoutes");
 const orderRoutes = require("./routes/orderRoutes");
@@ -78,8 +79,17 @@ app.use((err, req, res, next) => {
   res.status(500).json({ error: "Something went wrong" });
 });
 
-app.listen(PORT, () => {
-  const mode = process.env.DATABASE_URL ? "PostgreSQL" : "mock in-memory data";
-  const serving = fs.existsSync(clientDist) ? "API + built frontend" : "API only (no client/dist build found)";
-  console.log(`GARNERS Bakery API running on http://localhost:${PORT} — ${serving} (${mode})`);
-});
+// Bring the database schema up to date (new columns only — safe on every boot),
+// then start taking requests.
+migrate()
+  .catch((err) => {
+    console.error("Database migration failed:", err.message);
+    process.exit(1);
+  })
+  .then(() =>
+    app.listen(PORT, () => {
+      const mode = process.env.DATABASE_URL ? "PostgreSQL" : "mock in-memory data";
+      const serving = fs.existsSync(clientDist) ? "API + built frontend" : "API only (no client/dist build found)";
+      console.log(`GARNERS Bakery API running on http://localhost:${PORT} — ${serving} (${mode})`);
+    })
+  );

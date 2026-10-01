@@ -82,7 +82,11 @@ stub("data/orders.js", {
   getToday: async () => db.orders,
   getActive: async () => db.orders.filter((o) => o.status !== "delivered" && o.status !== "cancelled"),
   getRecent: async (limit = 5) => [...db.orders].reverse().slice(0, limit),
-  countActive: async () => db.orders.filter((o) => o.status !== "delivered" && o.status !== "cancelled").length
+  countActive: async () => db.orders.filter((o) => o.status !== "delivered" && o.status !== "cancelled").length,
+  unpaidTotals: async () => {
+    const unpaid = db.orders.filter((o) => o.paymentStatus !== "paid" && o.status !== "cancelled");
+    return { count: unpaid.length, total: unpaid.reduce((sum, o) => sum + o.total, 0) };
+  }
 });
 stub("data/expenses.js", { getAll: async () => [] });
 stub("data/staff.js", {
@@ -127,6 +131,8 @@ const call = async (handler, { user, body = {}, params = {}, query = {} }) => {
 };
 
 const customer = { id: 10, name: "Priya", role: "customer" };
+// The frozen clock is Thu 1 Oct 2026, 12:00 IST: 2 PM today is bookable, 11 AM has passed.
+const BOOKING = { pickupDate: "2026-10-01", pickupSlot: "14:00" };
 const staffUser = { id: 2, name: "Sara", role: "staff" };
 const owner = { id: 1, name: "Owner", role: "owner" };
 
@@ -135,7 +141,7 @@ beforeEach(reset);
 test("prices come from the menu, not from the request", async () => {
   const r = await call(orderController.createOrder, {
     user: customer,
-    body: { items: [{ menuItemId: 1, qty: 2, price: 1, name: "hacked" }], total: 1, paymentMethod: "cash" }
+    body: { ...BOOKING, items: [{ menuItemId: 1, qty: 2, price: 1, name: "hacked" }], total: 1, paymentMethod: "cash" }
   });
   assert.equal(r.status, 201);
   assert.equal(r.body.order.total, 440);
@@ -146,7 +152,7 @@ test("prices come from the menu, not from the request", async () => {
 test("custom cake is priced per kg and uses ingredients per kg", async () => {
   const r = await call(orderController.createOrder, {
     user: customer,
-    body: { items: [{ menuItemId: 6, qty: 1, size: 2, price: 5, name: "Custom cake — Chocolate, 2kg" }] }
+    body: { ...BOOKING, pickupDate: "2026-10-02", items: [{ menuItemId: 6, qty: 1, size: 2, price: 5, name: "Custom cake — Chocolate, 2kg" }] }
   });
   assert.equal(r.status, 201);
   assert.equal(r.body.order.total, 2400);
@@ -154,20 +160,20 @@ test("custom cake is priced per kg and uses ingredients per kg", async () => {
 });
 
 test("custom cake without a valid size is rejected", async () => {
-  const r = await call(orderController.createOrder, { user: customer, body: { items: [{ menuItemId: 6, size: 0 }] } });
+  const r = await call(orderController.createOrder, { user: customer, body: { ...BOOKING, items: [{ menuItemId: 6, size: 0 }] } });
   assert.equal(r.status, 400);
 });
 
 test("sold-out, unpriced, unknown items and bad quantities are rejected", async () => {
   for (const item of [{ menuItemId: 2 }, { menuItemId: 7 }, { menuItemId: 999 }, { menuItemId: 1, qty: -3 }, { menuItemId: 1, qty: 1.5 }]) {
-    const r = await call(orderController.createOrder, { user: customer, body: { items: [item] } });
+    const r = await call(orderController.createOrder, { user: customer, body: { ...BOOKING, items: [item] } });
     assert.equal(r.status, 400, JSON.stringify(item));
   }
   assert.equal(db.orders.length, 0);
 });
 
 test("online UPI/card orders start unpaid; POS sales are paid", async () => {
-  const upi = await call(orderController.createOrder, { user: customer, body: { items: [{ menuItemId: 1 }], paymentMethod: "upi" } });
+  const upi = await call(orderController.createOrder, { user: customer, body: { ...BOOKING, items: [{ menuItemId: 1 }], paymentMethod: "upi" } });
   assert.equal(upi.body.order.paymentStatus, "unpaid");
   const pos = await call(orderController.createOrder, { user: staffUser, body: { items: [{ menuItemId: 1 }], paymentMethod: "upi", customerName: "Walk-in" } });
   assert.equal(pos.body.order.paymentStatus, "paid");
@@ -177,7 +183,7 @@ test("online UPI/card orders start unpaid; POS sales are paid", async () => {
 test("delivery fee is added on the server", async () => {
   const r = await call(orderController.createOrder, {
     user: customer,
-    body: {
+    body: { ...BOOKING,
       items: [{ menuItemId: 1, qty: 2 }],
       deliveryType: "delivery",
       deliveryZone: "whitefield",
@@ -193,20 +199,20 @@ test("delivery fee is added on the server", async () => {
 test("delivery without a phone number is rejected", async () => {
   const r = await call(orderController.createOrder, {
     user: customer,
-    body: { items: [{ menuItemId: 1, qty: 2 }], deliveryType: "delivery", deliveryZone: "whitefield", deliveryAddress: "12 Main Rd" }
+    body: { ...BOOKING, items: [{ menuItemId: 1, qty: 2 }], deliveryType: "delivery", deliveryZone: "whitefield", deliveryAddress: "12 Main Rd" }
   });
   assert.equal(r.status, 400);
 });
 
 test("if stock deduction fails, the order is not saved", async () => {
   db.failDeduct = true;
-  const r = await call(orderController.createOrder, { user: customer, body: { items: [{ menuItemId: 1 }] } });
+  const r = await call(orderController.createOrder, { user: customer, body: { ...BOOKING, items: [{ menuItemId: 1 }] } });
   assert.equal(r.status, 500);
   assert.equal(db.orders.length, 0);
 });
 
 test("cancelling via the status dropdown returns stock, and can't be reopened", async () => {
-  const { body } = await call(orderController.createOrder, { user: customer, body: { items: [{ menuItemId: 1, qty: 2 }] } });
+  const { body } = await call(orderController.createOrder, { user: customer, body: { ...BOOKING, items: [{ menuItemId: 1, qty: 2 }] } });
   assert.equal(db.inventory[4], 9);
   const c = await call(orderController.updateOrderStatus, { user: staffUser, params: { id: body.order.id }, body: { status: "cancelled" } });
   assert.equal(c.body.order.status, "cancelled");
@@ -219,7 +225,7 @@ test("cancelling via the status dropdown returns stock, and can't be reopened", 
 });
 
 test("customers can only cancel their own order while it's placed", async () => {
-  const { body } = await call(orderController.createOrder, { user: customer, body: { items: [{ menuItemId: 1 }] } });
+  const { body } = await call(orderController.createOrder, { user: customer, body: { ...BOOKING, items: [{ menuItemId: 1 }] } });
   const other = await call(orderController.cancelOrder, { user: { ...customer, id: 99 }, params: { id: body.order.id } });
   assert.equal(other.status, 403);
   await call(orderController.updateOrderStatus, { user: staffUser, params: { id: body.order.id }, body: { status: "baking" } });
@@ -243,6 +249,11 @@ test("reports and dashboard leave out cancelled orders and use India dates", asy
   const dash = await call(dashboardController.getSummary, { user: owner });
   assert.equal(dash.body.todaysRevenue, 500);
   assert.equal(dash.body.pendingOrders, 1);
+  // Queue holds only orders still in progress; money to collect skips cancelled ones.
+  assert.deepEqual(dash.body.queue.map((o) => o.id), [3]);
+  assert.equal(dash.body.toBake, 1);
+  assert.equal(dash.body.awaitingPayment.count, 2);
+  assert.equal(dash.body.awaitingPayment.total, 500);
 });
 
 test("staff can change only their own clock status; owner can change anyone's", async () => {
@@ -269,4 +280,34 @@ test("login rate limit blocks the 11th attempt", () => {
     limiter({ ip: "9.9.9.9" }, res, () => {});
   }
   assert.equal(blocked, 1);
+});
+
+test("pickup slots: no Mondays, no past times, a day's notice for custom cakes", async () => {
+  const book = (extra, items = [{ menuItemId: 1 }]) =>
+    call(orderController.createOrder, { user: customer, body: { ...BOOKING, ...extra, items } });
+  assert.equal((await book({ pickupDate: undefined, pickupSlot: undefined })).status, 400, "no slot chosen");
+  assert.equal((await book({ pickupDate: "2026-10-05" })).status, 400, "Monday");
+  assert.equal((await book({ pickupSlot: "11:00" })).status, 400, "11 AM today has passed");
+  assert.equal((await book({ pickupSlot: "10:15" })).status, 400, "not a real slot");
+  assert.equal((await book({ pickupDate: "2026-10-20" })).status, 400, "too far ahead");
+  assert.equal((await book({}, [{ menuItemId: 6, size: 1 }])).status, 400, "custom cake for today");
+  const ok = await book({ pickupDate: "2026-10-03", pickupSlot: "17:30" });
+  assert.equal(ok.status, 201);
+  assert.equal(ok.body.order.pickupTime, "Sat 3 Oct, 5:30 PM");
+  assert.equal(ok.body.order.pickupDate, "2026-10-03");
+  // The counter can still log a walk-in without a slot.
+  const pos = await call(orderController.createOrder, { user: staffUser, body: { items: [{ menuItemId: 1 }], pickupTime: "Walk-in" } });
+  assert.equal(pos.status, 201);
+  assert.equal(pos.body.order.pickupTime, "Walk-in");
+});
+
+test("store status lists bookable days with Monday closed", () => {
+  let body;
+  orderController.getStoreStatus({}, { json: (b) => (body = b) });
+  assert.equal(body.days[0].label, "Today");
+  assert.equal(body.days[0].slots[0].value, "13:00", "first slot at least 45 minutes after noon");
+  assert.equal(body.days[0].slots.at(-1).label, "8:00 PM");
+  const monday = body.days.find((d) => d.date === "2026-10-05");
+  assert.equal(monday.closed, true);
+  assert.equal(monday.slots.length, 0);
 });

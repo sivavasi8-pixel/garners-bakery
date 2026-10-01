@@ -1,6 +1,11 @@
 // Orders, backed by PostgreSQL — see server/db/schema.sql.
 const pool = require("../config/db");
 
+const toYmd = (d) =>
+  d instanceof Date
+    ? `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`
+    : String(d).slice(0, 10);
+
 const mapRow = (row) =>
   row && {
     id: row.id,
@@ -18,6 +23,8 @@ const mapRow = (row) =>
     deliveryAddress: row.delivery_address,
     deliveryFee: row.delivery_fee === null ? null : Number(row.delivery_fee),
     customerPhone: row.customer_phone,
+    // pg returns a `date` as a Date at local midnight; send it back as plain YYYY-MM-DD.
+    pickupDate: row.pickup_date ? toYmd(row.pickup_date) : null,
     createdAt: row.created_at
   };
 
@@ -39,6 +46,13 @@ module.exports = {
   getRecent: async (limit = 5) => {
     const { rows } = await pool.query("select * from orders order by id desc limit $1", [limit]);
     return rows.map(mapRow);
+  },
+  // Not-yet-paid orders that haven't been cancelled: how many, and how much.
+  unpaidTotals: async () => {
+    const { rows } = await pool.query(
+      "select count(*)::int as count, coalesce(sum(total), 0) as total from orders where payment_status <> 'paid' and status <> 'cancelled'"
+    );
+    return { count: rows[0].count, total: Number(rows[0].total) };
   },
   countActive: async () => {
     const { rows } = await pool.query("select count(*)::int as count from orders where status not in ('delivered', 'cancelled')");
@@ -81,14 +95,15 @@ module.exports = {
     deliveryZone,
     deliveryAddress,
     deliveryFee,
-    customerPhone
+    customerPhone,
+    pickupDate
   }, db = pool) => {
     const { rows } = await db.query(
       `insert into orders (
          customer_name, customer_id, items, total, pickup_time, channel, payment_method, payment_status,
-         delivery_type, delivery_zone, delivery_address, delivery_fee, customer_phone
+         delivery_type, delivery_zone, delivery_address, delivery_fee, customer_phone, pickup_date
        )
-       values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13) returning *`,
+       values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14) returning *`,
       [
         customerName,
         customerId,
@@ -102,7 +117,8 @@ module.exports = {
         deliveryZone || null,
         deliveryAddress || null,
         deliveryFee === undefined ? null : deliveryFee,
-        customerPhone || null
+        customerPhone || null,
+        pickupDate || null
       ]
     );
     return mapRow(rows[0]);

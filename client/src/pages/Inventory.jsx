@@ -167,7 +167,6 @@ export default function AdminInventory() {
       </div>
 
       <style>{`
-        .admin-section-title { font-size: 14px; font-weight: 500; margin-bottom: 10px; }
         .admin-two-col { display: grid; grid-template-columns: 1fr; gap: 18px; }
         @media (min-width: 900px) { .admin-two-col { grid-template-columns: 1.5fr 1fr; } }
         .admin-search { width: 100%; border: 1px solid var(--a-border); border-radius: 6px; padding: 8px 12px; font-size: 13px; box-sizing: border-box; }
@@ -175,8 +174,6 @@ export default function AdminInventory() {
         .admin-btn-primary { width: 100%; padding: 9px; background: var(--a-green); color: #fff; border: none; border-radius: 6px; font-size: 13px; }
         .admin-btn-secondary { padding: 9px; background: var(--a-bg); border: 1px solid var(--a-border); border-radius: 6px; font-size: 13px; }
         .admin-qty-input { width: 60px; padding: 5px 6px; font-size: 12px; border: 1px solid var(--a-border); border-radius: 6px; }
-        .admin-btn-xs { padding: 5px 10px; font-size: 11px; border: 1px solid var(--a-border); border-radius: 6px; background: var(--a-panel); }
-        .admin-btn-xs.danger { color: var(--a-danger-text); }
       `}</style>
     </AdminPage>
   );

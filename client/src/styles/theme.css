@@ -15,15 +15,25 @@
 
   --text-primary: var(--charcoal);
   --text-secondary: #6e6a5e;
-  --text-muted: #a19c8c;
+  --text-muted: #8a8474;
   --text-inverse: var(--cream);
 
   --surface-0: var(--cream);
   --surface-1: var(--paper);
   --surface-2: var(--stone);
 
-  --border: #e6e2d6;
+  --border: #e4dfd2;
   --border-strong: #d8d2c0;
+
+  /* Redesign additions */
+  --kraft: #c9a063;
+  --kraft-soft: #f3e9d7;
+  --wood: #6b4a32;
+  --sand: #f1ede3;
+  --on-green-muted: #dce6df;
+  /* The red-and-cream awning stripe from the shopfront — a thin signature line
+     along the top of every screen. */
+  --awning-stripe: repeating-linear-gradient(90deg, var(--red) 0 18px, var(--cream) 18px 36px);
 
   --success-bg: #e7f2e4;
   --success-text: #2c5c26;
@@ -32,11 +42,11 @@
   --danger-bg: var(--red-tint);
   --danger-text: var(--red);
 
-  --radius: 10px;
+  --radius: 12px;
   --radius-lg: 16px;
 
   --font-display: "Fraunces", Georgia, serif;
-  --font-body: "Inter", -apple-system, sans-serif;
+  --font-body: "Hanken Grotesk", -apple-system, "Segoe UI", sans-serif;
 
   --tabbar-h: 60px;
   --topbar-h: 64px;
@@ -58,9 +68,16 @@ html, body {
 
 h1, h2, h3 {
   font-family: var(--font-display);
-  font-weight: 500;
+  font-weight: 600;
   margin: 0;
+  text-wrap: balance;
 }
+
+/* Visible keyboard focus everywhere */
+:focus-visible { outline: 2px solid var(--kraft); outline-offset: 2px; }
+
+/* The awning stripe — see --awning-stripe above */
+.awning { height: 6px; background: var(--awning-stripe); }
 
 button {
   font-family: var(--font-body);

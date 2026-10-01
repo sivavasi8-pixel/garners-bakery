@@ -16,7 +16,7 @@ Derived from real storefront and packaging photos (not a generic bakery theme).
 ## Type
 - Display / brand wordmark: serif, high-contrast (e.g. "Fraunces" or "Playfair Display") — mirrors the logo badge lettering
 - Wordmark tagline ("Cakes & Breads"): italic display serif, mirroring the thin script used under "GARNERS" on real product labels — not plain body text
-- Body / UI: clean grotesque sans (e.g. "Inter") for dashboard density
+- Body / UI: "Hanken Grotesk" (Google Fonts) — a warm grotesque with good figures, used for both the storefront and the console (Inter is still loaded only for the Poster page's canvas drawing)
 - Data / numbers: tabular sans for dashboard stats
 
 ## Signature element

@@ -1,4 +1,4 @@
-import { NavLink, Outlet, useNavigate } from "react-router-dom";
+import { NavLink, Link, Outlet, useNavigate } from "react-router-dom";
 import { useAuth } from "../auth/AuthContext";
 import { useCart } from "../cart/CartContext";
 
@@ -6,6 +6,7 @@ export default function CustomerNav() {
   const { user, logout } = useAuth();
   const { count: cartCount } = useCart();
   const navigate = useNavigate();
+  const isShopUser = user?.role === "owner" || user?.role === "staff";
 
   const handleLogout = () => {
     logout();
@@ -13,30 +14,28 @@ export default function CustomerNav() {
   };
 
   const customerTabs = [
-    { to: "/order", label: "Order", iconClass: "ti-shopping-bag" },
+    { to: "/order", label: "Menu", iconClass: "ti-bread", end: true },
     ...(user?.role === "customer" ? [{ to: "/my-orders", label: "My orders", iconClass: "ti-receipt" }] : []),
+    ...(isShopUser ? [{ to: "/dashboard", label: "Console", iconClass: "ti-layout-dashboard" }] : [])
   ];
 
   return (
     <div style={{ minHeight: "100vh", background: "var(--surface-0)" }}>
-      {/* Desktop / tablet top bar */}
       <header className="topbar">
+        <div className="awning" aria-hidden="true" />
         <div className="topbar-inner">
-          <div className="brand">
-            <div className="brand-badge">G</div>
-            <div>
-              <p className="brand-name">GARNERS</p>
-              <p className="brand-sub">Cakes &amp; Breads</p>
-            </div>
-          </div>
+          <Link to="/order" className="brand" aria-label="GARNERS Cakes & Breads, home">
+            <span className="brand-name">GARNERS</span>
+            <span className="brand-sub">Cakes &amp; Breads</span>
+          </Link>
 
-          <nav className="topbar-nav">
-            <NavLink to="/order" className={({ isActive }) => `topbar-link${isActive ? " active" : ""}`}>
-              Order online
-              {cartCount > 0 && <span className="topbar-cart-badge">{cartCount}</span>}
-            </NavLink>
+          <nav className="topbar-nav" aria-label="Main">
+            <NavLink to="/order" end className={({ isActive }) => `topbar-link${isActive ? " active" : ""}`}>Menu</NavLink>
             {user?.role === "customer" && (
               <NavLink to="/my-orders" className={({ isActive }) => `topbar-link${isActive ? " active" : ""}`}>My orders</NavLink>
+            )}
+            {isShopUser && (
+              <NavLink to="/dashboard" className="topbar-link">Shop console</NavLink>
             )}
             <a href="/handbook.html" target="_blank" rel="noopener noreferrer" className="topbar-link">Guide</a>
           </nav>
@@ -45,11 +44,15 @@ export default function CustomerNav() {
             {user ? (
               <>
                 <span className="topbar-user">{user.name}</span>
-                <button className="btn-outline-inverse" onClick={handleLogout}>Log out</button>
+                <button className="topbar-ghost" onClick={handleLogout}>Log out</button>
               </>
             ) : (
-              <NavLink to="/login" className="btn-solid" style={{ textDecoration: "none", display: "inline-block" }}>Log in</NavLink>
+              <NavLink to="/login" className="topbar-ghost">Log in</NavLink>
             )}
+            <Link to="/order#bag" className="bag-btn" aria-label={`Your bag, ${cartCount} item${cartCount === 1 ? "" : "s"}`}>
+              <i className="ti ti-shopping-bag" aria-hidden="true" />
+              {cartCount > 0 && <span className="bag-count">{cartCount}</span>}
+            </Link>
           </div>
         </div>
       </header>
@@ -62,12 +65,10 @@ export default function CustomerNav() {
           <NavLink
             key={tab.to}
             to={tab.to}
+            end={tab.end}
             className={({ isActive }) => `tabbar-item${isActive ? " active" : ""}`}
           >
-            <span className="tabbar-icon-wrap">
-              <i className={`ti ${tab.iconClass}`} aria-hidden="true" />
-              {tab.to === "/order" && cartCount > 0 && <span className="tabbar-cart-badge">{cartCount}</span>}
-            </span>
+            <i className={`ti ${tab.iconClass}`} aria-hidden="true" />
             <span>{tab.label}</span>
           </NavLink>
         ))}
@@ -98,80 +99,70 @@ export default function CustomerNav() {
         }
         .topbar-inner {
           height: var(--topbar-h);
-          max-width: 1200px;
+          max-width: 1280px;
           margin: 0 auto;
           padding: 0 16px;
           display: flex;
           align-items: center;
           justify-content: space-between;
-          gap: 12px;
+          gap: 16px;
         }
-        .brand { display: flex; align-items: center; gap: 10px; }
-        .brand-badge {
-          width: 34px; height: 34px; border-radius: 50%;
-          border: 1.5px solid var(--gold);
-          display: flex; align-items: center; justify-content: center;
-          font-family: var(--font-display); font-size: 13px; flex-shrink: 0;
-        }
-        .brand-name {
-          margin: 0; font-family: var(--font-display); font-size: 16px;
-          letter-spacing: 0.4px; line-height: 1.1;
-        }
-        .brand-sub { margin: 0; font-size: 10px; opacity: 0.7; line-height: 1.1; }
+        @media (min-width: 960px) { .topbar-inner { padding: 0 32px; } }
 
-        .topbar-nav { display: none; gap: 4px; }
+        /* Two-tier wordmark: bold spaced caps over the italic tagline, as on the real labels. */
+        .brand { display: flex; flex-direction: column; line-height: 1; text-decoration: none; color: var(--cream); }
+        .brand-name { font-family: var(--font-display); font-weight: 700; font-size: 21px; letter-spacing: 0.14em; }
+        .brand-sub { font-family: var(--font-display); font-style: italic; font-size: 12.5px; opacity: 0.85; margin-top: 3px; }
+
+        .topbar-nav { display: none; gap: 4px; flex: 1; margin-left: 24px; }
         .topbar-link {
-          padding: 8px 14px; border-radius: 8px; font-size: 14px;
-          text-decoration: none; color: rgba(250,248,243,0.75);
+          padding: 10px 14px; font-size: 15px; font-weight: 500;
+          text-decoration: none; color: var(--on-green-muted); border-bottom: 2px solid transparent;
         }
-        .topbar-link.active { color: var(--cream); background: rgba(250,248,243,0.12); }
-        .topbar-cart-badge {
-          display: inline-flex; align-items: center; justify-content: center;
-          min-width: 16px; height: 16px; padding: 0 4px; margin-left: 6px;
-          background: var(--gold); color: var(--green-dark); border-radius: 999px;
-          font-size: 10px; font-weight: 700; vertical-align: 2px;
-        }
+        .topbar-link:hover { color: var(--cream); }
+        .topbar-link.active { color: var(--cream); font-weight: 700; border-bottom-color: var(--kraft); }
 
-        .topbar-right { display: none; align-items: center; gap: 10px; }
-        .topbar-user { font-size: 13px; opacity: 0.85; }
-        .btn-solid {
-          background: var(--gold); color: var(--green-dark); border: none;
-          padding: 8px 16px; border-radius: 8px; font-size: 13px; font-weight: 500;
+        .topbar-right { display: flex; align-items: center; gap: 10px; }
+        .topbar-user { display: none; font-size: 14px; color: var(--on-green-muted); }
+        .topbar-ghost {
+          display: none; background: transparent; color: var(--cream); text-decoration: none;
+          border: 1px solid rgba(250,248,243,0.4); padding: 9px 14px; border-radius: 10px; font-size: 14px; font-weight: 600;
         }
-        .btn-outline-inverse {
-          background: transparent; color: var(--cream);
-          border: 1px solid rgba(250,248,243,0.4);
-          padding: 7px 14px; border-radius: 8px; font-size: 13px;
+        .bag-btn {
+          position: relative; width: 44px; height: 44px; border-radius: 22px;
+          background: var(--cream); color: var(--green); display: flex; align-items: center; justify-content: center;
+          text-decoration: none;
+        }
+        .bag-btn i { font-size: 21px; }
+        .bag-count {
+          position: absolute; top: -3px; right: -3px; min-width: 20px; height: 20px; padding: 0 5px; box-sizing: border-box;
+          border-radius: 10px; background: var(--red); color: #fff; font-size: 11px; font-weight: 700;
+          display: flex; align-items: center; justify-content: center;
         }
 
         @media (min-width: 720px) {
           .topbar-nav { display: flex; }
-          .topbar-right { display: flex; }
+          .topbar-user { display: inline; }
+          .topbar-ghost { display: inline-block; }
         }
 
         .tabbar {
           position: fixed; bottom: 0; left: 0; right: 0;
           height: var(--tabbar-h);
+          padding-bottom: env(safe-area-inset-bottom, 0px);
           background: var(--surface-1);
           border-top: 1px solid var(--border);
           display: flex;
-          overflow-x: auto;
           z-index: 20;
         }
         .tabbar-item {
           flex: 1; display: flex; flex-direction: column; align-items: center;
           justify-content: center; gap: 3px; text-decoration: none;
-          color: var(--text-muted); font-size: 11px; min-width: 56px;
-          border: none; background: none; padding: 6px 4px;
+          color: var(--text-secondary); font-size: 11.5px; font-weight: 600; min-width: 56px;
+          border: none; background: none; padding: 6px 4px; font-family: var(--font-body);
         }
-        .tabbar-item i { font-size: 20px; }
+        .tabbar-item i { font-size: 21px; }
         .tabbar-item.active { color: var(--green); }
-        .tabbar-icon-wrap { position: relative; display: inline-flex; }
-        .tabbar-cart-badge {
-          position: absolute; top: -4px; right: -8px; min-width: 14px; height: 14px; padding: 0 3px;
-          background: var(--red); color: #fff; border-radius: 999px; font-size: 9px; font-weight: 700;
-          display: flex; align-items: center; justify-content: center;
-        }
 
         @media (min-width: 720px) {
           .tabbar { display: none; }

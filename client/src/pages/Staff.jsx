@@ -275,7 +275,6 @@ export default function AdminStaff() {
       </div>
 
       <style>{`
-        .admin-section-title { font-size: 14px; font-weight: 500; margin-bottom: 10px; }
         .admin-two-col { display: grid; grid-template-columns: 1fr; gap: 18px; }
         @media (min-width: 900px) { .admin-two-col { grid-template-columns: 1.3fr 1fr; } }
         .admin-avatar {
@@ -284,11 +283,10 @@ export default function AdminStaff() {
         }
         .admin-search { width: 100%; border: 1px solid var(--a-border); border-radius: 6px; padding: 8px 12px; font-size: 13px; box-sizing: border-box; }
         .admin-inline-input { font-size: 12px; padding: 3px 6px; border: 1px solid var(--a-border); border-radius: 4px; }
-        .admin-select-sm { border: 1px solid var(--a-border); border-radius: 6px; padding: 5px 8px; font-size: 12px; background: var(--a-panel); }
         .admin-form-panel { background: var(--a-panel); border: 1px solid var(--a-border); border-radius: var(--a-radius); padding: 16px; }
         .admin-btn-primary { width: 100%; padding: 10px; background: var(--a-green); color: #fff; border: none; border-radius: 6px; font-size: 13px; }
         .admin-btn-primary:disabled { background: var(--a-border); color: var(--a-text-muted); }
-        .admin-link-btn { border: none; background: none; color: var(--a-green); cursor: pointer; font-size: 11px; padding: 0; }
+        .admin-link-btn { border: none; background: none; color: var(--a-green); cursor: pointer; font-size: 13px; font-weight: 600; padding: 8px 0; }
         .admin-link-btn.muted { color: var(--a-text-muted); }
         .admin-link-btn.danger { color: var(--a-danger-text); }
       `}</style>
