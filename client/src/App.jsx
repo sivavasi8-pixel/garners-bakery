@@ -71,14 +71,8 @@ export default function App() {
             </ProtectedRoute>
           }
         />
-        <Route
-          path="/poster"
-          element={
-            <ProtectedRoute roles={["owner"]}>
-              <Poster />
-            </ProtectedRoute>
-          }
-        />
+        {/* Owner and staff: whoever posts the morning banner in the WhatsApp group. */}
+        <Route path="/poster" element={<Poster />} />
       </Route>
 
       {/* Any logged-in role — the backend enforces a customer can only fetch their own

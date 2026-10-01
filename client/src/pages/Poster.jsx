@@ -1,17 +1,19 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { api } from "../api";
 import { AdminPage } from "../components/admin/AdminUI";
+import { makeQr } from "../qr";
 
 // Same labels Order.jsx shows customers, so the poster's category headings
 // match what people see when they actually open the app to order.
 const CATEGORY_LABELS = {
+  special: "Today's Special",
   breads: "Bread",
   buns: "Buns",
   pastries: "Pastries",
   cookies: "Cookies",
   cakes: "Cakes"
 };
-const CATEGORY_ORDER = ["breads", "buns", "pastries", "cookies", "cakes"];
+const CATEGORY_ORDER = ["special", "breads", "buns", "pastries", "cookies", "cakes"];
 
 const POSTER_W = 1080;
 const PHONE = "7812813248";
@@ -114,6 +116,16 @@ const IMG_GAP = 14;
 // balance items across the two columns and to size the canvas up front.
 const boxHeight = (group) => BOX_PAD_TOP + group.items.length * ROW_H + BOX_PAD_BOTTOM;
 
+const fitText = (ctx, text, maxW) => {
+  for (const size of [22, 20, 18]) {
+    ctx.font = `500 ${size}px Inter, sans-serif`;
+    if (ctx.measureText(text).width <= maxW) return { text, font: ctx.font };
+  }
+  let t = text;
+  while (t.length > 1 && ctx.measureText(`${t}…`).width > maxW) t = t.slice(0, -1);
+  return { text: `${t.trimEnd()}…`, font: ctx.font };
+};
+
 function drawCategoryBox(ctx, x, y, w, group, img) {
   const h = boxHeight(group);
   const hasImg = !!img;
@@ -166,10 +178,13 @@ function drawCategoryBox(ctx, x, y, w, group, img) {
     ctx.fillStyle = CHARCOAL;
     ctx.fillText(priceText, x + BOX_PAD_X + textW - priceW, rowY);
 
+    // A long name first steps down to a slightly smaller size, then is trimmed
+    // with "…" — never squashed sideways, which made it hard to read.
     const nameMaxW = textW - priceW - 20;
-    ctx.font = "500 22px Inter, sans-serif";
-    const nameActualW = Math.min(ctx.measureText(item.name).width, nameMaxW);
-    ctx.fillText(item.name, x + BOX_PAD_X, rowY, nameMaxW);
+    const fitted = fitText(ctx, item.name, nameMaxW);
+    ctx.font = fitted.font;
+    const nameActualW = ctx.measureText(fitted.text).width;
+    ctx.fillText(fitted.text, x + BOX_PAD_X, rowY);
 
     ctx.strokeStyle = LEADER;
     ctx.lineWidth = 1.5;
@@ -186,16 +201,39 @@ function drawCategoryBox(ctx, x, y, w, group, img) {
   return h;
 }
 
+// Draws a QR code (see ../qr.js) as crisp squares on a white rounded tile —
+// the white margin is the "quiet zone" scanners need around the code.
+function drawQr(ctx, qr, x, y, box) {
+  ctx.fillStyle = "#ffffff";
+  roundRectPath(ctx, x, y, box, box, 12);
+  ctx.fill();
+  ctx.strokeStyle = BORDER;
+  ctx.lineWidth = 1.5;
+  ctx.stroke();
+  const quiet = 4;
+  const cell = Math.floor(box / (qr.size + quiet * 2));
+  const offset = Math.round((box - cell * qr.size) / 2);
+  ctx.fillStyle = CHARCOAL;
+  for (let r = 0; r < qr.size; r++) {
+    for (let c = 0; c < qr.size; c++) {
+      if (qr.isDark(c, r)) ctx.fillRect(x + offset + c * cell, y + offset + r * cell, cell, cell);
+    }
+  }
+}
+
+// Big enough to stay scannable even if WhatsApp shrinks the picture.
+const QR_BOX = 240;
+
 // Renders the poster onto a canvas at a fixed 1080px width, growing its height
-// to fit however many in-stock items there are today — this is what used to be
+// to fit however many items are on today's list — this is what used to be
 // designed by hand in an external tool every morning.
-function drawPoster(canvas, { groups, images, dateLabel }) {
+function drawPoster(canvas, { groups, images, dateLabel, orderUrl, qr }) {
   const padX = 64;
   const colGap = 28;
   const colW = (POSTER_W - padX * 2 - colGap) / 2;
   const boxGap = 22;
   const headerH = 280;
-  const footerH = 110;
+  const footerH = qr ? QR_BOX + 90 : 110;
 
   // Greedily balance categories across two columns by their (known-in-advance)
   // box height, so neither column ends up dramatically taller than the other.
@@ -288,6 +326,34 @@ function drawPoster(canvas, { groups, images, dateLabel }) {
   ctx.lineTo(POSTER_W - padX, footerY);
   ctx.stroke();
 
+  if (qr) {
+    // QR on the left, "order online" + contact lines beside it.
+    const qrY = footerY + 32;
+    drawQr(ctx, qr, padX, qrY, QR_BOX);
+    const tx = padX + QR_BOX + 40;
+    const top = qrY + 22;
+    ctx.fillStyle = GREEN;
+    ctx.font = "700 44px Fraunces, Georgia, serif";
+    ctx.fillText("Order online", tx, top + 44);
+    ctx.font = "500 22px Inter, sans-serif";
+    ctx.fillStyle = CHARCOAL;
+    ctx.fillText("Scan the code, or open:", tx, top + 84);
+    ctx.font = "700 24px Inter, sans-serif";
+    ctx.fillStyle = GREEN;
+    const shortUrl = orderUrl.replace(/^https?:\/\//, "");
+    const urlFit = fitText(ctx, shortUrl, POSTER_W - padX - tx);
+    ctx.font = urlFit.font.replace("500", "700");
+    ctx.fillText(urlFit.text, tx, top + 118);
+
+    ctx.font = "600 22px Inter, sans-serif";
+    drawPinIcon(ctx, tx + 10, top + 164, 20, GREEN);
+    ctx.fillText(ADDRESS, tx + 30, top + 172);
+    const addrEnd = tx + 30 + ctx.measureText(ADDRESS).width;
+    drawPhoneIcon(ctx, addrEnd + 40, top + 164, 18, GREEN);
+    ctx.fillText(PHONE, addrEnd + 56, top + 172);
+    return;
+  }
+
   ctx.font = "600 24px Inter, sans-serif";
   ctx.fillStyle = GREEN;
   const iconGap = 30; // icon glyph + gap before its text
@@ -313,35 +379,116 @@ function drawPoster(canvas, { groups, images, dateLabel }) {
   ctx.fillText(PHONE, phoneIconCx + 16, textY);
 }
 
+// Which items the person unticked today — remembered on this device until
+// tomorrow, so re-opening the page doesn't undo their choices. A convenience
+// only: if storage is blocked, everything simply starts ticked.
+const todayKey = () => `garners_poster_hidden_${new Date().toLocaleDateString("en-CA", { timeZone: "Asia/Kolkata" })}`;
+const loadHidden = () => {
+  try {
+    return new Set(JSON.parse(localStorage.getItem(todayKey()) || "[]"));
+  } catch {
+    return new Set();
+  }
+};
+const saveHidden = (set) => {
+  try {
+    localStorage.setItem(todayKey(), JSON.stringify([...set]));
+  } catch {
+    // storage blocked — choices last for this visit only
+  }
+};
+
+const isSpecialItem = (m) => m.category === "special" || m.isSpecial;
+const fileName = () => `garners-todays-bakes-${new Date().toLocaleDateString("en-CA", { timeZone: "Asia/Kolkata" })}.png`;
+
+// The WhatsApp message that goes with the picture: a short list (for people
+// who read the text, or whose phone didn't load the image) plus the order link.
+const buildMessage = (groups, orderUrl) => {
+  const lines = ["Today's bakes at GARNERS Cakes & Breads", ""];
+  for (const g of groups) {
+    lines.push(`*${g.label}*`);
+    g.items.forEach((i) => lines.push(`• ${i.name}${i.price ? ` — ₹${i.price}` : ""}`));
+    lines.push("");
+  }
+  lines.push(`Order online: ${orderUrl}`);
+  lines.push(`Call: ${PHONE}`);
+  return lines.join("\n");
+};
+
 export default function Poster() {
   const [menu, setMenu] = useState(null);
   const [error, setError] = useState(null);
-  const [includeSpecialsOnly, setIncludeSpecialsOnly] = useState(false);
+  const [hidden, setHidden] = useState(loadHidden);
+  const [showQr, setShowQr] = useState(true);
+  const [message, setMessage] = useState("");
+  const [messageEdited, setMessageEdited] = useState(false);
+  const [status, setStatus] = useState(null);
   const canvasRef = useRef(null);
+  const fileRef = useRef(null);
+  const orderUrl = `${window.location.origin}/order`;
+  const canShareFiles = typeof navigator !== "undefined" && typeof navigator.canShare === "function";
 
   useEffect(() => {
     api.getMenu().then((d) => setMenu(d.items)).catch((e) => setError(e.message));
   }, []);
 
+  // Everything that could go on today's poster: in stock, priced, not made-to-order.
+  const available = useMemo(
+    () => (menu || []).filter((m) => m.inStock && m.price && m.category !== "custom"),
+    [menu]
+  );
+
   const groups = useMemo(() => {
-    if (!menu) return [];
-    const inStock = menu.filter((m) => m.inStock && m.price && m.category !== "custom" && m.category !== "special");
-    const source = includeSpecialsOnly ? inStock.filter((m) => m.isSpecial) : inStock;
+    const source = available.filter((m) => !hidden.has(m.id));
     const present = CATEGORY_ORDER.filter((c) => source.some((m) => m.category === c));
     source.forEach((m) => { if (!present.includes(m.category)) present.push(m.category); });
     return present.map((c) => ({
       label: CATEGORY_LABELS[c] || c.charAt(0).toUpperCase() + c.slice(1),
       items: source.filter((m) => m.category === c)
     }));
-  }, [menu, includeSpecialsOnly]);
+  }, [available, hidden]);
+
+  // Picker groups list every available item (ticked or not), in poster order.
+  const pickerGroups = useMemo(() => {
+    const present = CATEGORY_ORDER.filter((c) => available.some((m) => m.category === c));
+    available.forEach((m) => { if (!present.includes(m.category)) present.push(m.category); });
+    return present.map((c) => ({
+      id: c,
+      label: CATEGORY_LABELS[c] || c.charAt(0).toUpperCase() + c.slice(1),
+      items: available.filter((m) => m.category === c)
+    }));
+  }, [available]);
+
+  const updateHidden = (next) => {
+    setHidden(next);
+    saveHidden(next);
+    setStatus(null);
+  };
+  const toggleItem = (id) => {
+    const next = new Set(hidden);
+    next.has(id) ? next.delete(id) : next.add(id);
+    updateHidden(next);
+  };
+  const selectAll = () => updateHidden(new Set());
+  const selectNone = () => updateHidden(new Set(available.map((m) => m.id)));
+  const specialsOnly = () => updateHidden(new Set(available.filter((m) => !isSpecialItem(m)).map((m) => m.id)));
 
   const dateLabel = new Date().toLocaleDateString("en-IN", {
     weekday: "long",
     day: "numeric",
-    month: "long"
+    month: "long",
+    timeZone: "Asia/Kolkata"
   });
 
+  const qr = useMemo(() => (showQr ? makeQr(orderUrl) : null), [showQr, orderUrl]);
+
+  // Keep the message in step with the list until someone edits it by hand.
   useEffect(() => {
+    if (!messageEdited) setMessage(buildMessage(groups, orderUrl));
+  }, [groups, orderUrl, messageEdited]);
+
+  useEffect(() => {
+    fileRef.current = null;
     if (!canvasRef.current || groups.length === 0) return;
     let cancelled = false;
     // One representative photo per category (its first item that actually has
@@ -351,10 +498,24 @@ export default function Poster() {
       if (cancelled || !canvasRef.current) return;
       const images = {};
       imageEntries.forEach(([label], i) => { images[label] = imgs[i]; });
-      drawPoster(canvasRef.current, { groups, images, dateLabel });
+      drawPoster(canvasRef.current, { groups, images, dateLabel, orderUrl, qr });
+      // Prepare the image file now, so the Share button can hand it over the
+      // instant it's tapped (phones only allow sharing straight from a tap).
+      canvasRef.current.toBlob((blob) => {
+        if (!cancelled && blob) fileRef.current = new File([blob], fileName(), { type: "image/png" });
+      }, "image/png");
     });
     return () => { cancelled = true; };
-  }, [groups, dateLabel]);
+  }, [groups, dateLabel, orderUrl, qr]);
+
+  const copyMessage = async () => {
+    try {
+      await navigator.clipboard.writeText(message);
+      setStatus("Message copied — paste it into WhatsApp with the picture.");
+    } catch {
+      setStatus("Couldn't copy automatically — select the message below and copy it.");
+    }
+  };
 
   const handleDownload = () => {
     const canvas = canvasRef.current;
@@ -363,45 +524,164 @@ export default function Poster() {
       const url = URL.createObjectURL(blob);
       const a = document.createElement("a");
       a.href = url;
-      a.download = `garners-todays-bakes-${new Date().toISOString().slice(0, 10)}.png`;
+      a.download = fileName();
       a.click();
       URL.revokeObjectURL(url);
     }, "image/png");
   };
 
-  if (error) return <p style={{ padding: 28, color: "var(--a-danger-text)" }}>Couldn't load menu: {error}</p>;
+  // Phone: opens the share sheet with the picture (and message) attached —
+  // pick WhatsApp, then the group. Computers without file sharing get the
+  // picture downloaded and the message copied instead.
+  const handleShare = async () => {
+    const file = fileRef.current;
+    if (file && canShareFiles && navigator.canShare({ files: [file] })) {
+      try {
+        await navigator.share({ files: [file], text: message });
+        setStatus("Shared.");
+      } catch (err) {
+        if (err?.name !== "AbortError") setStatus("Sharing didn't work here — use Download and Copy message instead.");
+      }
+      return;
+    }
+    handleDownload();
+    await copyMessage();
+    setStatus("Picture downloaded and message copied — attach the picture in WhatsApp and paste the message.");
+  };
+
+  if (error) return <AdminPage title="Today's poster"><p style={{ color: "var(--a-danger-text)" }}>Couldn't load the menu: {error}. Refresh to try again.</p></AdminPage>;
+
+  const shownCount = available.length - available.filter((m) => hidden.has(m.id)).length;
 
   return (
     <AdminPage
-      eyebrow="Marketing"
-      title="Today's Bakes poster"
+      eyebrow={dateLabel}
+      title="Today's poster"
       actions={
-        <button className="admin-btn-primary" style={{ width: "auto", padding: "8px 16px" }} onClick={handleDownload} disabled={groups.length === 0}>
-          Download PNG
-        </button>
+        <>
+          <button type="button" className="a-btn quiet" onClick={handleDownload} disabled={groups.length === 0}>
+            <i className="ti ti-download" aria-hidden="true" /> Download
+          </button>
+          <button type="button" className="a-btn primary" onClick={handleShare} disabled={groups.length === 0}>
+            <i className="ti ti-brand-whatsapp" aria-hidden="true" /> Share to WhatsApp
+          </button>
+        </>
       }
     >
-      <p style={{ fontSize: 13, color: "var(--a-text-secondary)", marginBottom: 16, maxWidth: 640 }}>
-        Auto-built from today's in-stock menu — no more redesigning this by hand every morning.
-        Download it and post it to your WhatsApp group the same way as before.
-      </p>
-
-      <label style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 13, marginBottom: 18 }}>
-        <input type="checkbox" checked={includeSpecialsOnly} onChange={(e) => setIncludeSpecialsOnly(e.target.checked)} />
-        Only include today's specials
-      </label>
+      {status && <p className="poster-status" role="status">{status}</p>}
 
       {!menu ? (
-        <p style={{ fontSize: 13, color: "var(--a-text-secondary)" }}>Loading menu…</p>
-      ) : groups.length === 0 ? (
-        <p style={{ fontSize: 13, color: "var(--a-text-secondary)" }}>
-          Nothing in stock to show{includeSpecialsOnly ? " as a special" : ""} right now — mark some items in stock on the Menu page first.
-        </p>
+        <p className="poster-muted">Loading the menu…</p>
+      ) : available.length === 0 ? (
+        <p className="poster-muted">Nothing is in stock right now. Mark items available on the Menu or POS page first, then come back here.</p>
       ) : (
-        <div style={{ maxWidth: 560, border: "1px solid var(--a-border)", borderRadius: "var(--a-radius)", overflow: "hidden", boxShadow: "0 6px 20px -10px rgba(0,0,0,0.25)" }}>
-          <canvas ref={canvasRef} style={{ width: "100%", display: "block" }} />
+        <div className="poster-layout">
+          <div className="poster-controls">
+            <section className="poster-panel" aria-labelledby="pick-heading">
+              <div className="poster-panel-head">
+                <h2 id="pick-heading">What's on today's poster</h2>
+                <span className="poster-count">{shownCount} of {available.length}</span>
+              </div>
+              <div className="poster-quick">
+                <button type="button" className="admin-btn-xs" onClick={selectAll}>Everything in stock</button>
+                <button type="button" className="admin-btn-xs" onClick={specialsOnly}>Only specials</button>
+                <button type="button" className="admin-btn-xs" onClick={selectNone}>Clear</button>
+              </div>
+              {pickerGroups.map((g) => (
+                <fieldset key={g.id} className="pick-group">
+                  <legend>{g.label}</legend>
+                  {g.items.map((m) => (
+                    <label key={m.id} className="pick-item">
+                      <input type="checkbox" checked={!hidden.has(m.id)} onChange={() => toggleItem(m.id)} />
+                      <span className="pick-name">{m.name}{m.isSpecial && m.category !== "special" ? <span className="pick-tag">Special</span> : null}</span>
+                      <span className="pick-price">₹{m.price}</span>
+                    </label>
+                  ))}
+                </fieldset>
+              ))}
+              <p className="poster-muted small">Only items marked in stock appear here. Your ticks are remembered on this device for today.</p>
+            </section>
+
+            <section className="poster-panel" aria-labelledby="share-heading">
+              <h2 id="share-heading">Order link</h2>
+              <label className="pick-item">
+                <input type="checkbox" checked={showQr} onChange={(e) => setShowQr(e.target.checked)} />
+                <span className="pick-name">Put an "Order online" QR code on the poster</span>
+              </label>
+              <p className="poster-link">{orderUrl}</p>
+            </section>
+
+            <section className="poster-panel" aria-labelledby="msg-heading">
+              <div className="poster-panel-head">
+                <h2 id="msg-heading">Message to send with it</h2>
+                {messageEdited && (
+                  <button type="button" className="admin-link-btn" onClick={() => setMessageEdited(false)}>Reset</button>
+                )}
+              </div>
+              <textarea
+                id="poster-message"
+                className="poster-message"
+                rows={8}
+                value={message}
+                onChange={(e) => { setMessage(e.target.value); setMessageEdited(true); }}
+                aria-label="WhatsApp message"
+              />
+              <button type="button" className="a-btn quiet" onClick={copyMessage}>
+                <i className="ti ti-copy" aria-hidden="true" /> Copy message
+              </button>
+            </section>
+          </div>
+
+          <div className="poster-preview">
+            {groups.length === 0 ? (
+              <p className="poster-muted">Tick at least one item to build the poster.</p>
+            ) : (
+              <canvas ref={canvasRef} className="poster-canvas" aria-label="Today's Bakes poster preview" role="img" />
+            )}
+          </div>
         </div>
       )}
+
+      <style>{`
+        .poster-status {
+          margin: 0 0 16px; padding: 12px 14px; border-radius: 12px;
+          background: var(--a-success-bg); color: var(--a-success-text); font-weight: 600;
+        }
+        .poster-muted { color: var(--a-text-secondary); margin: 0; }
+        .poster-muted.small { font-size: 13px; }
+        .poster-layout { display: grid; grid-template-columns: minmax(0, 1fr); gap: 20px; align-items: start; }
+        @media (min-width: 1000px) { .poster-layout { grid-template-columns: minmax(0, 420px) minmax(0, 1fr); } }
+        .poster-controls { display: flex; flex-direction: column; gap: 16px; min-width: 0; }
+        .poster-panel {
+          background: var(--a-panel); border: 1px solid var(--a-border); border-radius: var(--a-radius-lg);
+          padding: 16px 18px; display: flex; flex-direction: column; gap: 12px;
+        }
+        .poster-panel h2 { margin: 0; font: 700 16px var(--font-body); }
+        .poster-panel-head { display: flex; justify-content: space-between; align-items: baseline; gap: 10px; }
+        .poster-count { font-size: 13px; font-weight: 600; color: var(--a-text-secondary); }
+        .poster-quick { display: flex; gap: 8px; flex-wrap: wrap; }
+        .pick-group { border: 0; margin: 0; padding: 0; display: flex; flex-direction: column; }
+        .pick-group legend { padding: 0; margin-bottom: 4px; font-size: 12.5px; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; color: var(--a-text-secondary); }
+        .pick-item { display: flex; align-items: center; gap: 12px; min-height: 44px; cursor: pointer; border-bottom: 1px solid var(--a-border-soft); }
+        .pick-item:last-child { border-bottom: none; }
+        .pick-item input { width: 20px; height: 20px; accent-color: var(--a-green); margin: 0; flex-shrink: 0; }
+        .pick-name { flex: 1; min-width: 0; font-weight: 600; }
+        .pick-tag { margin-left: 8px; font-size: 11.5px; font-weight: 700; color: #6b4a32; background: #f3e9d7; border-radius: 6px; padding: 2px 6px; }
+        .pick-price { color: var(--a-text-secondary); font-weight: 600; }
+        .poster-link { margin: 0; font-size: 13px; color: var(--a-text-secondary); overflow-wrap: anywhere; }
+        .poster-message {
+          width: 100%; box-sizing: border-box; border: 1px solid var(--a-border); border-radius: 12px; padding: 12px 14px;
+          font: 400 14px/1.5 var(--font-body); color: var(--a-text-primary); resize: vertical;
+        }
+        .poster-message:focus { outline: none; border-color: var(--a-green); }
+        .admin-link-btn { border: none; background: none; color: var(--a-green); cursor: pointer; font-size: 13px; font-weight: 600; padding: 8px 0; }
+        .poster-preview { min-width: 0; }
+        @media (min-width: 1000px) { .poster-preview { position: sticky; top: 20px; } }
+        .poster-canvas {
+          width: 100%; max-width: 560px; display: block; border: 1px solid var(--a-border);
+          border-radius: var(--a-radius); box-shadow: 0 6px 20px -10px rgba(0,0,0,0.25);
+        }
+      `}</style>
     </AdminPage>
   );
 }
