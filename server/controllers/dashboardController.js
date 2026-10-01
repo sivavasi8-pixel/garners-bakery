@@ -11,10 +11,13 @@ exports.getSummary = asyncHandler(async (req, res) => {
     staff.getAll()
   ]);
 
-  const todaysRevenue = todaysOrders.reduce((sum, o) => sum + (o.total || 0), 0);
+  // Cancelled orders never became sales, so they don't count toward revenue.
+  const todaysSales = todaysOrders.filter((o) => o.status !== "cancelled");
+  const todaysRevenue = todaysSales.reduce((sum, o) => sum + (o.total || 0), 0);
   // Pending counts every unfulfilled order regardless of date — an order from
   // yesterday still needs baking, it shouldn't drop off the radar at midnight.
-  const pending = allOrders.filter((o) => o.status !== "delivered").length;
+  // Cancelled orders are finished too, just not delivered.
+  const pending = allOrders.filter((o) => o.status !== "delivered" && o.status !== "cancelled").length;
 
   const lowStock = inv.filter((i) => i.status === "low_stock" || i.status === "out_of_stock");
 
@@ -22,7 +25,7 @@ exports.getSummary = asyncHandler(async (req, res) => {
 
   res.json({
     todaysRevenue,
-    ordersToday: todaysOrders.length,
+    ordersToday: todaysSales.length,
     pendingOrders: pending,
     staffOnShift: onShift,
     staffTotal: staffList.length,

@@ -56,13 +56,18 @@ Runs on http://localhost:5173 and proxies `/api` calls to the backend.
 
 Every route except `/api/menu` and `/api/auth/*` requires a `Bearer <token>` from
 `/api/auth/login`. Roles: `owner`, `staff` (both can see the dashboard/inventory/staff
-pages), and `customer` (can place orders). Tokens are JWTs signed with `JWT_SECRET`
-(falls back to a dev-only secret if unset) and expire after 7 days.
+pages), and `customer` (can place orders). Tokens are JWTs signed with `JWT_SECRET` and expire after 7 days.
+Locally a dev-only secret is used if it's unset; **in production (Render) the
+server refuses to start** unless `JWT_SECRET` is set to 32+ random characters.
+
+Login and signup are rate-limited to 10 attempts per 15 minutes per IP.
 
 There's no self-serve owner/staff signup — those accounts are seeded in
 `server/data/users.js`. Customers can self-register via `/api/auth/signup`.
 
-**Seeded dev logins:**
+**Seeded dev logins** (local only — these passwords are public, so the live site
+refuses them; set real ones with `npm run set-password -- <email> <new-password>`
+from `server/`, with `DATABASE_URL` in `server/.env`):
 
 | Role | Email | Password |
 |---|---|---|
@@ -180,11 +185,15 @@ needed).
 ### Payments & receipts
 
 Every order now carries `paymentMethod` (`cash`/`upi`/`card`) and
-`paymentStatus` (`unpaid`/`paid`). There's no real payment gateway (out of
-scope for a local dev app), so it's simulated: a POS sale is always marked
-paid immediately (charged at the counter); an online order is paid
-immediately for `upi`/`card` (treated as prepaid) but stays `unpaid` for
-`cash` (pay on pickup) until owner/staff hits "Mark paid" on the Dashboard.
+`paymentStatus` (`unpaid`/`paid`). There's no payment gateway yet, so
+nothing online is confirmed automatically: a POS sale is marked paid (charged
+at the counter), and **every online order starts `unpaid`** — cash is "pay on
+pickup", UPI/card shows "payment awaiting confirmation" — until owner/staff
+check the money arrived and hit "Mark paid".
+
+**Prices are always calculated on the server** from the menu. The browser
+sends only item ids, quantities, cake size and notes; sold-out items are
+rejected, and a custom cake is priced as the menu's ₹/kg × size.
 `/receipt/:id` is a printable receipt for any order — a customer can only
 open their own (enforced server-side in `orderController.getOrder`),
 owner/staff can open any.
@@ -204,6 +213,11 @@ dated to today by default). `reports/summary` now returns
 profit is revenue minus logged expenses, not strict cash-basis accounting
 (revenue counts every order's total the same way the dashboard already
 does, regardless of `paymentStatus`).
+
+## Tests
+
+`cd server && npm test` runs the order, reporting and permission rules
+(`server/test/`) against an in-memory fake of the data layer — no database needed.
 
 ## Connecting a real PostgreSQL database
 

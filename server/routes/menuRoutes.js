@@ -5,7 +5,17 @@ const menuController = require("../controllers/menuController");
 const { requireAuth, requireRole } = require("../middleware/auth");
 
 // Images live in Postgres (bytea), not on disk — memoryStorage keeps the upload as a Buffer only.
-const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 5 * 1024 * 1024 } });
+// Only real photo formats — anything else (HTML, SVG, scripts) is rejected, since these
+// files are served back to every visitor from our own domain.
+const ALLOWED_IMAGE_TYPES = ["image/jpeg", "image/png", "image/webp", "image/gif"];
+const upload = multer({
+  storage: multer.memoryStorage(),
+  limits: { fileSize: 5 * 1024 * 1024 },
+  fileFilter: (req, file, cb) => {
+    if (ALLOWED_IMAGE_TYPES.includes(file.mimetype)) return cb(null, true);
+    cb(Object.assign(new Error("Photos must be JPEG, PNG, WebP or GIF"), { status: 400 }));
+  }
+});
 
 router.get("/", menuController.getMenu);
 router.get("/:id/image", menuController.getImage);

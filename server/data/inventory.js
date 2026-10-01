@@ -67,8 +67,8 @@ module.exports = {
   // Relative decrement (vs. updateQuantity's absolute set) — used by recipe auto-deduct.
   // Floors at 0 rather than going negative; a recipe outpacing real stock shows as
   // "out of stock" rather than a confusing negative number.
-  deduct: async (id, amount) => {
-    const { rows } = await pool.query(
+  deduct: async (id, amount, db = pool) => {
+    const { rows } = await db.query(
       "update inventory set quantity = greatest(quantity - $1, 0) where id = $2 returning *",
       [amount, Number(id)]
     );
@@ -78,8 +78,8 @@ module.exports = {
   // its recipe took. Not a perfect inverse (if the recipe changed since the order was
   // placed, this restocks at *today's* recipe, not the one used at order time), but
   // right for the common case and far better than stock never coming back at all.
-  restock: async (id, amount) => {
-    const { rows } = await pool.query("update inventory set quantity = quantity + $1 where id = $2 returning *", [
+  restock: async (id, amount, db = pool) => {
+    const { rows } = await db.query("update inventory set quantity = quantity + $1 where id = $2 returning *", [
       amount,
       Number(id)
     ]);

@@ -8,7 +8,7 @@ const asyncHandler = require("../middleware/asyncHandler");
 exports.getNotifications = asyncHandler(async (req, res) => {
   if (req.user.role === "customer") {
     const mine = await orders.getByCustomerId(req.user.id);
-    const active = mine.filter((o) => o.status !== "delivered");
+    const active = mine.filter((o) => o.status !== "delivered" && o.status !== "cancelled");
     const items = active.map((o) => ({
       id: `order-${o.id}`,
       type: "my_order",
@@ -21,7 +21,7 @@ exports.getNotifications = asyncHandler(async (req, res) => {
 
   // owner/staff
   const [allOrders, inv] = await Promise.all([orders.getAll(), inventory.getAll()]);
-  const pending = allOrders.filter((o) => o.status !== "delivered");
+  const pending = allOrders.filter((o) => o.status !== "delivered" && o.status !== "cancelled");
   const lowStock = inv.filter((i) => i.status === "low_stock" || i.status === "out_of_stock");
 
   const items = [

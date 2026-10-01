@@ -53,6 +53,13 @@ exports.updateStatus = asyncHandler(async (req, res) => {
   if (!valid.includes(status)) {
     return res.status(400).json({ error: `status must be one of ${valid.join(", ")}` });
   }
+  // Staff clock themselves in/out; only the owner can change someone else's status.
+  if (req.user.role === "staff") {
+    const me = await users.findById(req.user.id);
+    if (!me || me.staffId !== Number(req.params.id)) {
+      return res.status(403).json({ error: "You can only update your own status — ask the owner to change others" });
+    }
+  }
   const person = await staff.updateStatus(req.params.id, status);
   if (!person) return res.status(404).json({ error: "Staff member not found" });
   res.json({ staff: person });

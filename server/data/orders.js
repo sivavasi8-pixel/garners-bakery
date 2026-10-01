@@ -25,8 +25,12 @@ module.exports = {
     const { rows } = await pool.query("select * from orders order by id desc");
     return rows.map(mapRow);
   },
-  getById: async (id) => {
-    const { rows } = await pool.query("select * from orders where id = $1", [Number(id)]);
+  // `forUpdate` locks the row for the rest of the caller's transaction, so two
+  // simultaneous cancel/status requests can't both act on the same old state.
+  getById: async (id, db = pool, { forUpdate = false } = {}) => {
+    const { rows } = await db.query(`select * from orders where id = $1${forUpdate ? " for update" : ""}`, [
+      Number(id)
+    ]);
     return mapRow(rows[0]);
   },
   getByCustomerId: async (customerId) => {
@@ -35,12 +39,12 @@ module.exports = {
     ]);
     return rows.map(mapRow);
   },
-  // Only orders created today (server's clock/timezone) — used for the dashboard's
-  // "today's revenue" and "orders today" stats, which previously summed all orders ever.
+  // Only orders created "today" in India time — the bakery's day, not the database
+  // server's (Neon runs on UTC, which would put 12:00–5:30 AM IST orders on the wrong day).
   getToday: async () => {
     const { rows } = await pool.query(
       `select * from orders
-       where created_at >= date_trunc('day', now()) and created_at < date_trunc('day', now()) + interval '1 day'
+       where (created_at at time zone 'Asia/Kolkata')::date = (now() at time zone 'Asia/Kolkata')::date
        order by id desc`
     );
     return rows.map(mapRow);
@@ -58,8 +62,8 @@ module.exports = {
     deliveryZone,
     deliveryAddress,
     deliveryFee
-  }) => {
-    const { rows } = await pool.query(
+  }, db = pool) => {
+    const { rows } = await db.query(
       `insert into orders (
          customer_name, customer_id, items, total, pickup_time, channel, payment_method, payment_status,
          delivery_type, delivery_zone, delivery_address, delivery_fee
@@ -82,8 +86,8 @@ module.exports = {
     );
     return mapRow(rows[0]);
   },
-  updateStatus: async (id, status) => {
-    const { rows } = await pool.query("update orders set status = $1 where id = $2 returning *", [
+  updateStatus: async (id, status, db = pool) => {
+    const { rows } = await db.query("update orders set status = $1 where id = $2 returning *", [
       status,
       Number(id)
     ]);

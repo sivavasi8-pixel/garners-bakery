@@ -2,20 +2,24 @@ const orders = require("../data/orders");
 const expenses = require("../data/expenses");
 const asyncHandler = require("../middleware/asyncHandler");
 
-const dayKey = (date) => new Date(date).toISOString().slice(0, 10); // YYYY-MM-DD
+// YYYY-MM-DD for the bakery's own day (India time). toISOString() would use UTC and
+// put anything between midnight and 5:30 AM IST on the previous day.
+const dayKey = (date) => new Date(date).toLocaleDateString("en-CA", { timeZone: "Asia/Kolkata" });
+const DAY_MS = 24 * 60 * 60 * 1000;
 
 exports.getSummary = asyncHandler(async (req, res) => {
   const [allOrders, allExpenses] = await Promise.all([orders.getAll(), expenses.getAll()]);
+  // Cancelled orders never became sales — they're left out of revenue, daily totals
+  // and best sellers (they still show in ordersByStatus below).
+  const sales = allOrders.filter((o) => o.status !== "cancelled");
 
   // Last 7 calendar days (oldest first), including days with zero orders.
   const days = [];
   for (let i = 6; i >= 0; i--) {
-    const d = new Date();
-    d.setDate(d.getDate() - i);
-    days.push(dayKey(d));
+    days.push(dayKey(Date.now() - i * DAY_MS));
   }
   const byDay = Object.fromEntries(days.map((d) => [d, { date: d, revenue: 0, orders: 0 }]));
-  for (const o of allOrders) {
+  for (const o of sales) {
     const key = dayKey(o.createdAt);
     if (byDay[key]) {
       byDay[key].revenue += o.total || 0;
@@ -26,7 +30,7 @@ exports.getSummary = asyncHandler(async (req, res) => {
 
   // Best sellers — aggregate item quantities across every order on record.
   const itemTotals = new Map();
-  for (const o of allOrders) {
+  for (const o of sales) {
     for (const item of o.items || []) {
       const prev = itemTotals.get(item.name) || 0;
       itemTotals.set(item.name, prev + (item.qty || 1));
@@ -45,7 +49,7 @@ exports.getSummary = asyncHandler(async (req, res) => {
   // Profit here is revenue minus logged expenses — a simplification (revenue counts every
   // order's total regardless of payment_status, same basis the dashboard already uses; it
   // isn't strict cash-basis accounting, just "sales value minus costs logged").
-  const allTimeRevenue = allOrders.reduce((sum, o) => sum + (o.total || 0), 0);
+  const allTimeRevenue = sales.reduce((sum, o) => sum + (o.total || 0), 0);
   const allTimeExpenses = allExpenses.reduce((sum, e) => sum + e.amount, 0);
 
   const last7DaysSet = new Set(days);
@@ -59,7 +63,7 @@ exports.getSummary = asyncHandler(async (req, res) => {
     bestSellers,
     ordersByStatus,
     allTimeRevenue,
-    allTimeOrders: allOrders.length,
+    allTimeOrders: sales.length,
     allTimeExpenses,
     allTimeProfit: allTimeRevenue - allTimeExpenses,
     revenueLast7Days,

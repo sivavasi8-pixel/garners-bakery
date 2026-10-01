@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { api } from "../api";
 import StatusBadge from "../components/StatusBadge";
+import { paymentLabel } from "../paymentLabel";
 
 export default function MyOrders() {
   const [orders, setOrders] = useState(null);
@@ -57,7 +58,7 @@ export default function MyOrders() {
                 {" · "}Pickup: {o.pickupTime}
               </p>
               <p className={`payment-line${o.paymentStatus === "paid" ? " payment-paid" : ""}`}>
-                {o.paymentStatus === "paid" ? "Paid" : "Pay on pickup"}{o.paymentMethod ? ` · ${o.paymentMethod}` : ""}
+                {paymentLabel(o)}{o.paymentMethod ? ` · ${o.paymentMethod}` : ""}
               </p>
               {o.status === "placed" && (
                 <button

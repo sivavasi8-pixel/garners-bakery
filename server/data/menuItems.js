@@ -66,6 +66,22 @@ module.exports = {
     );
     return rows.map(mapRow);
   },
+  // Lean lookup used by order creation to price items server-side — the prices a
+  // browser sends are never trusted, only the ids.
+  getForPricing: async (ids, db = pool) => {
+    const { rows } = await db.query(
+      "select id, name, category, price, unit, in_stock from menu_items where id = any($1::int[])",
+      [ids.map(Number)]
+    );
+    return rows.map((r) => ({
+      id: r.id,
+      name: r.name,
+      category: r.category,
+      price: r.price === null ? null : Number(r.price),
+      unit: r.unit,
+      inStock: r.in_stock
+    }));
+  },
   getImage: async (id) => {
     const { rows } = await pool.query("select image_data, image_mime from menu_items where id = $1", [Number(id)]);
     const row = rows[0];

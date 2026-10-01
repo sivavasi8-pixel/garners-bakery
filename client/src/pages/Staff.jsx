@@ -178,7 +178,14 @@ export default function AdminStaff() {
                 </div>
                 <div style={{ display: "flex", alignItems: "center", gap: 8, flexShrink: 0 }}>
                   <StatusPill status={s.status} />
-                  <select className="admin-select-sm" value={s.status} onChange={(e) => handleStatusChange(s.id, e.target.value)}>
+                  <select
+                    className="admin-select-sm"
+                    value={s.status}
+                    onChange={(e) => handleStatusChange(s.id, e.target.value)}
+                    // Staff can change only their own status; the owner can change anyone's.
+                    disabled={!isOwner && user?.staffId !== s.id}
+                    title={!isOwner && user?.staffId !== s.id ? "Only the owner can change someone else's status" : undefined}
+                  >
                     {statusOptions.map((opt) => <option key={opt} value={opt}>{opt.replace("_", " ")}</option>)}
                   </select>
                   {isOwner && <button onClick={() => handleRemoveStaff(s)} className="admin-link-btn danger">remove</button>}

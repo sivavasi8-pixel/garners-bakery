@@ -4,8 +4,8 @@ const pool = require("../config/db");
 
 module.exports = {
   // Lean shape (inventoryId + qty only) — used by orderController's deduction loop.
-  getForMenuItem: async (menuItemId) => {
-    const { rows } = await pool.query(
+  getForMenuItem: async (menuItemId, db = pool) => {
+    const { rows } = await db.query(
       "select inventory_id, qty_per_unit from recipe_ingredients where menu_item_id = $1",
       [Number(menuItemId)]
     );

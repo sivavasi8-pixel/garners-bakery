@@ -24,6 +24,11 @@ exports.createItem = asyncHandler(async (req, res) => {
 // same contract this endpoint had before it grew name/unit/reorderLevel/supplier editing.
 exports.updateItem = asyncHandler(async (req, res) => {
   const { name, unit, quantity, reorderLevel, supplier } = req.body;
+  // Staff can restock (change the quantity); renaming an ingredient, changing its unit,
+  // reorder level or supplier is a catalog decision for the owner.
+  if (req.user.role === "staff" && [name, unit, reorderLevel, supplier].some((v) => v !== undefined)) {
+    return res.status(403).json({ error: "Staff can update quantities only — ask the owner to edit ingredient details" });
+  }
   if (quantity != null && (typeof quantity !== "number" || quantity < 0)) {
     return res.status(400).json({ error: "quantity must be a non-negative number" });
   }

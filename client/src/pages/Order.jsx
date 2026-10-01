@@ -3,6 +3,7 @@ import { Link } from "react-router-dom";
 import { api } from "../api";
 import { useAuth } from "../auth/AuthContext";
 import { useCart } from "../cart/CartContext";
+import { paymentLabel } from "../paymentLabel";
 import { ZONES, calculateFee } from "../deliveryZones";
 
 // Known categories get a curated label/icon; anything else (including a
@@ -245,6 +246,7 @@ export default function Order() {
       id: `custom-${Date.now()}`,
       menuItemId: customItemId,
       name: `Custom cake — ${flavor}, ${size}kg`,
+      size, // the server prices per-kg items from the menu rate × size
       price,
       qty: 1,
       note
@@ -263,8 +265,9 @@ export default function Order() {
     setPlacing(true);
     try {
       const order = await api.createOrder({
-        items: cart.map((c) => ({ menuItemId: c.menuItemId, name: c.name, qty: c.qty, price: c.price, note: c.note })),
-        total,
+        // Prices and totals are calculated by the server from the menu; only what the
+        // customer chose (item, quantity, cake size, note) is sent.
+        items: cart.map((c) => ({ menuItemId: c.menuItemId, name: c.name, qty: c.qty, size: c.size, note: c.note })),
         pickupTime: pickupTime || "Not specified",
         channel: "online",
         paymentMethod,
@@ -419,7 +422,7 @@ export default function Order() {
               <p className="placed-order-title">Order #{placedOrder.id} placed!</p>
               <p className="placed-order-meta">
                 Status: {placedOrder.status} · Pickup: {placedOrder.pickupTime} · Payment:{" "}
-                {placedOrder.paymentStatus === "paid" ? "paid" : "pay on pickup"}
+                {paymentLabel(placedOrder).toLowerCase()}
               </p>
               <Link to={`/receipt/${placedOrder.id}`} className="btn-checkout" style={{ display: "block", textAlign: "center", textDecoration: "none", marginBottom: "8px" }}>
                 View / print receipt
