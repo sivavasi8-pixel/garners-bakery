@@ -8,7 +8,8 @@ const mapRow = (row) =>
     email: row.email,
     passwordHash: row.password_hash,
     role: row.role,
-    staffId: row.staff_id
+    staffId: row.staff_id,
+    phone: row.phone
   };
 
 module.exports = {
@@ -20,11 +21,11 @@ module.exports = {
     const { rows } = await pool.query("select * from users where id = $1", [Number(id)]);
     return mapRow(rows[0]);
   },
-  createCustomer: async ({ name, email, passwordHash }) => {
+  createCustomer: async ({ name, email, passwordHash, phone }) => {
     const { rows } = await pool.query(
-      `insert into users (name, email, password_hash, role)
-       values ($1, $2, $3, 'customer') returning *`,
-      [name, email, passwordHash]
+      `insert into users (name, email, password_hash, role, phone)
+       values ($1, $2, $3, 'customer', $4) returning *`,
+      [name, email, passwordHash, phone || null]
     );
     return mapRow(rows[0]);
   },

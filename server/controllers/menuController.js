@@ -1,6 +1,23 @@
+const crypto = require("crypto");
 const menuItems = require("../data/menuItems");
 const recipes = require("../data/recipes");
 const asyncHandler = require("../middleware/asyncHandler");
+
+const badRequest = (message) => Object.assign(new Error(message), { status: 400 });
+
+// Serves an uploaded photo with an ETag so a replaced image is picked up immediately.
+// Cache-Control: no-cache makes the browser always revalidate — cheap (just a hash
+// compare, 304 with no body) rather than blindly trusting a time-based cache, which
+// previously let a replaced photo show stale for up to an hour at the same URL.
+const sendImage = (req, res, image) => {
+  if (!image) return res.status(404).end();
+  const etag = `"${crypto.createHash("sha1").update(image.data).digest("hex")}"`;
+  res.set("ETag", etag);
+  res.set("Cache-Control", "no-cache");
+  if (req.headers["if-none-match"] === etag) return res.status(304).end();
+  res.set("Content-Type", image.mime || "application/octet-stream");
+  res.send(image.data);
+};
 
 exports.getMenu = asyncHandler(async (req, res) => {
   const { category } = req.query;
@@ -15,17 +32,23 @@ exports.getItem = asyncHandler(async (req, res) => {
 });
 
 exports.getImage = asyncHandler(async (req, res) => {
-  const image = await menuItems.getImage(req.params.id);
-  if (!image) return res.status(404).end();
-  res.set("Content-Type", image.mime || "application/octet-stream");
-  res.set("Cache-Control", "public, max-age=3600");
-  res.send(image.data);
+  sendImage(req, res, await menuItems.getImage(req.params.id));
 });
+
+// Throws instead of silently saving NaN/a negative number — which previously either
+// got stored as-is (a negative price) or hit Postgres's own "invalid input syntax for
+// type numeric" and surfaced as a generic 500.
+const parsePrice = (raw) => {
+  if (raw === "" || raw == null) return null;
+  const n = Number(raw);
+  if (!Number.isFinite(n) || n < 0) throw badRequest("price must be a non-negative number, or blank for made-to-order");
+  return n;
+};
 
 const fromRequest = (req) => ({
   name: req.body.name,
   category: req.body.category,
-  price: req.body.price === "" || req.body.price == null ? null : Number(req.body.price),
+  price: parsePrice(req.body.price),
   unit: req.body.unit,
   description: req.body.description,
   image: req.file ? { data: req.file.buffer, mime: req.file.mimetype } : null
@@ -87,11 +110,7 @@ exports.updatePopular = asyncHandler(async (req, res) => {
 });
 
 exports.getGalleryImage = asyncHandler(async (req, res) => {
-  const image = await menuItems.getGalleryImage(req.params.id, req.params.imageId);
-  if (!image) return res.status(404).end();
-  res.set("Content-Type", image.mime || "application/octet-stream");
-  res.set("Cache-Control", "public, max-age=3600");
-  res.send(image.data);
+  sendImage(req, res, await menuItems.getGalleryImage(req.params.id, req.params.imageId));
 });
 
 exports.addGalleryImage = asyncHandler(async (req, res) => {

@@ -6,7 +6,7 @@ import NotificationBell from "../NotificationBell";
 // Owner-only items are filtered in at render time (see navItems below) —
 // staff never sees Menu/Reports, matching the real role gate on those routes.
 const allNavItems = [
-  { to: "/", label: "Dashboard", icon: "ti-layout-dashboard", end: true },
+  { to: "/dashboard", label: "Dashboard", icon: "ti-layout-dashboard", end: true },
   { to: "/pos", label: "POS", icon: "ti-cash-register" },
   { to: "/orders", label: "Orders", icon: "ti-clipboard-list" },
   { to: "/inventory", label: "Inventory", icon: "ti-package" },

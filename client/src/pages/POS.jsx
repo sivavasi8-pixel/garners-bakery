@@ -21,6 +21,7 @@ export default function AdminPos() {
   const [activeCategory, setActiveCategory] = useState(null);
   const [cart, setCart] = useState([]);
   const [customerName, setCustomerName] = useState("");
+  const [customerPhone, setCustomerPhone] = useState("");
   const [paymentMethod, setPaymentMethod] = useState("cash");
   const [error, setError] = useState(null);
   const [placing, setPlacing] = useState(false);
@@ -79,12 +80,14 @@ export default function AdminPos() {
         total,
         pickupTime: "Walk-in",
         customerName: customerName || "Walk-in",
+        customerPhone: customerPhone.trim() || undefined,
         channel: "in-store",
         paymentMethod
       });
       setPlacedOrder(order.order);
       setCart([]);
       setCustomerName("");
+      setCustomerPhone("");
       setPaymentMethod("cash");
     } catch (err) {
       setError(err.message);
@@ -150,6 +153,13 @@ export default function AdminPos() {
                 placeholder="Customer name (optional)"
                 value={customerName}
                 onChange={(e) => setCustomerName(e.target.value)}
+                style={{ marginBottom: 8 }}
+              />
+              <input
+                className="admin-search"
+                placeholder="Phone (optional)"
+                value={customerPhone}
+                onChange={(e) => setCustomerPhone(e.target.value)}
                 style={{ marginBottom: 10 }}
               />
               <div className="admin-sale-list">

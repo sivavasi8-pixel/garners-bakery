@@ -118,7 +118,7 @@ exports.getOrder = asyncHandler(async (req, res) => {
 });
 
 exports.createOrder = asyncHandler(async (req, res) => {
-  const { items, pickupTime, channel, paymentMethod, deliveryType, deliveryZone, deliveryAddress } = req.body;
+  const { items, pickupTime, channel, paymentMethod, deliveryType, deliveryZone, deliveryAddress, customerPhone } = req.body;
   const validPayment = ["cash", "upi", "card"];
   if (paymentMethod && !validPayment.includes(paymentMethod)) {
     return res.status(400).json({ error: `paymentMethod must be one of ${validPayment.join(", ")}` });
@@ -137,6 +137,10 @@ exports.createOrder = asyncHandler(async (req, res) => {
 
   const isDelivery = deliveryType === "delivery";
   const address = clip(deliveryAddress, 500);
+  // Required for delivery (especially the Porter-rate zone, where staff must call to
+  // confirm the fee) — optional for pickup, since existing accounts predate this field.
+  const phone = clip(customerPhone, 20);
+  if (isDelivery && !phone) throw badRequest("A phone number is required for delivery orders");
 
   const order = await withTransaction(async (db) => {
     const { lines, itemsTotal } = await priceItems(items, db);
@@ -171,7 +175,8 @@ exports.createOrder = asyncHandler(async (req, res) => {
         deliveryType: isDelivery ? "delivery" : "pickup",
         deliveryZone: isDelivery ? deliveryZone : null,
         deliveryAddress: isDelivery ? address : null,
-        deliveryFee: isDelivery ? deliveryFee : null
+        deliveryFee: isDelivery ? deliveryFee : null,
+        customerPhone: phone || null
       },
       db
     );

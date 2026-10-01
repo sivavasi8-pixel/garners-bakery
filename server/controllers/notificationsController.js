@@ -19,9 +19,9 @@ exports.getNotifications = asyncHandler(async (req, res) => {
     return res.json({ count: items.length, items });
   }
 
-  // owner/staff
-  const [allOrders, inv] = await Promise.all([orders.getAll(), inventory.getAll()]);
-  const pending = allOrders.filter((o) => o.status !== "delivered" && o.status !== "cancelled");
+  // owner/staff — polled every 30s per logged-in staff member, so this must stay
+  // cheap: getActive() filters in SQL instead of reading every order ever placed.
+  const [pending, inv] = await Promise.all([orders.getActive(), inventory.getAll()]);
   const lowStock = inv.filter((i) => i.status === "low_stock" || i.status === "out_of_stock");
 
   const items = [

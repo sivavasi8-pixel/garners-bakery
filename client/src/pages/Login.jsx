@@ -28,7 +28,7 @@ export default function Login() {
     try {
       const user = await login(email, password);
       const from = location.state?.from;
-      navigate(from || (user.role === "customer" ? "/order" : "/"));
+      navigate(from || (user.role === "customer" ? "/order" : "/dashboard"));
     } catch (err) {
       setError(err.message);
     } finally {

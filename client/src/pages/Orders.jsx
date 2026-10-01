@@ -100,6 +100,11 @@ export default function AdminOrders() {
           <p style={{ margin: 0, overflowWrap: "anywhere" }}>{o.deliveryAddress}</p>
         </div>
       )}
+      {o.customerPhone && (
+        <p style={{ margin: "4px 0 0", fontSize: 11 }}>
+          <a href={`tel:${o.customerPhone}`} style={{ color: "var(--a-green)" }}>📞 {o.customerPhone}</a>
+        </p>
+      )}
     </div>
   );
 

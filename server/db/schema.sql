@@ -10,7 +10,8 @@ create table if not exists users (
   email text not null unique,
   password_hash text not null,
   role text not null check (role in ('owner', 'staff', 'customer')),
-  staff_id integer -- links a staff-role account to a row in staff.id, if any
+  staff_id integer, -- links a staff-role account to a row in staff.id, if any
+  phone text -- required at signup going forward; nullable so pre-existing accounts aren't broken
 );
 
 create table if not exists staff (
@@ -89,6 +90,7 @@ create table if not exists orders (
   delivery_zone text, -- one of server/data/deliveryZones.js's zone ids, only set when delivery_type = 'delivery'
   delivery_address text,
   delivery_fee numeric, -- null means "to be confirmed" (the outside-Whitefield zone, priced by Porter's live rate)
+  customer_phone text, -- required for delivery orders so staff can reach the customer (e.g. the Porter-rate zone)
   created_at timestamptz not null default now()
 );
 

@@ -8,9 +8,14 @@ const { signToken, isProduction } = require("../middleware/auth");
 const PUBLISHED_DEMO_PASSWORDS = ["owner123", "staff123", "customer123"];
 const asyncHandler = require("../middleware/asyncHandler");
 
+const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+// Loose on purpose — covers Indian mobile numbers with or without a country code,
+// and doesn't reject landlines or formatting like spaces/dashes outright.
+const PHONE_RE = /^[+\d][\d\s-]{6,19}$/;
+
 // staffId links a staff login to its roster row — the Staff page uses it to show
 // which status dropdown is theirs.
-const publicUser = (u) => ({ id: u.id, name: u.name, email: u.email, role: u.role, staffId: u.staffId ?? null });
+const publicUser = (u) => ({ id: u.id, name: u.name, email: u.email, role: u.role, staffId: u.staffId ?? null, phone: u.phone ?? null });
 
 exports.login = asyncHandler(async (req, res) => {
   const { email, password } = req.body;
@@ -30,18 +35,29 @@ exports.login = asyncHandler(async (req, res) => {
 });
 
 exports.signup = asyncHandler(async (req, res) => {
-  const { name, email, password } = req.body;
-  if (!name || !email || !password) {
-    return res.status(400).json({ error: "name, email and password are required" });
+  const { name, email, password, phone } = req.body;
+  if (!name || !email || !password || !phone) {
+    return res.status(400).json({ error: "name, email, phone and password are required" });
   }
-  if (password.length < 6) {
-    return res.status(400).json({ error: "password must be at least 6 characters" });
+  if (!EMAIL_RE.test(email)) {
+    return res.status(400).json({ error: "Enter a valid email address" });
+  }
+  if (!PHONE_RE.test(phone.trim())) {
+    return res.status(400).json({ error: "Enter a valid phone number" });
+  }
+  if (password.length < 8) {
+    return res.status(400).json({ error: "password must be at least 8 characters" });
   }
   if (await users.findByEmail(email)) {
     return res.status(409).json({ error: "An account with that email already exists" });
   }
   // Signup only ever creates customer accounts — owner/staff accounts are seeded, not self-served.
-  const user = await users.createCustomer({ name, email, passwordHash: bcrypt.hashSync(password, 10) });
+  const user = await users.createCustomer({
+    name,
+    email,
+    phone: phone.trim(),
+    passwordHash: bcrypt.hashSync(password, 10)
+  });
   res.status(201).json({ token: signToken(user), user: publicUser(user) });
 });
 

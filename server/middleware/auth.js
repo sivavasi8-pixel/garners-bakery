@@ -1,4 +1,5 @@
 const jwt = require("jsonwebtoken");
+const users = require("../data/users");
 
 // Dev-only fallback secret. It's public (it's in this repo), so anyone could forge an
 // owner login with it — in production (Render sets RENDER=true) the server refuses to
@@ -16,17 +17,29 @@ function signToken(user) {
   return jwt.sign({ sub: user.id, name: user.name, role: user.role }, JWT_SECRET, { expiresIn: "7d" });
 }
 
-function requireAuth(req, res, next) {
+// Tokens last 7 days, so the token itself can't be the only check — if it were,
+// a removed staff member or deleted account would keep working until it expired.
+// This adds one DB lookup per request to confirm the account still exists (and
+// picks up a role change immediately, instead of waiting for a fresh login).
+async function requireAuth(req, res, next) {
   const header = req.headers.authorization || "";
   const token = header.startsWith("Bearer ") ? header.slice(7) : null;
   if (!token) return res.status(401).json({ error: "Login required" });
 
+  let payload;
   try {
-    const payload = jwt.verify(token, JWT_SECRET);
-    req.user = { id: payload.sub, name: payload.name, role: payload.role };
-    next();
+    payload = jwt.verify(token, JWT_SECRET);
   } catch {
-    res.status(401).json({ error: "Invalid or expired session" });
+    return res.status(401).json({ error: "Invalid or expired session" });
+  }
+
+  try {
+    const user = await users.findById(payload.sub);
+    if (!user) return res.status(401).json({ error: "Your account is no longer active — please log in again" });
+    req.user = { id: user.id, name: user.name, role: user.role, staffId: user.staffId };
+    next();
+  } catch (err) {
+    next(err);
   }
 }
 

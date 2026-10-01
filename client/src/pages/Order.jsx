@@ -27,6 +27,28 @@ const paymentOptions = (fulfillment) => [
   { id: "card", label: "Card" }
 ];
 
+// Fixed slots instead of free text — staff previously saw "5 PM", "tmrw evening" or a
+// blank "Not specified" and couldn't sort or plan by it. Store hours, every 30 minutes.
+const TIME_SLOTS = (() => {
+  const slots = ["ASAP (within the hour)"];
+  for (let h = 9; h <= 20; h++) {
+    for (const m of [0, 30]) {
+      if (h === 20 && m === 30) break; // store closes 8:00 PM
+      const hour12 = h % 12 === 0 ? 12 : h % 12;
+      slots.push(`${hour12}:${m === 0 ? "00" : "30"} ${h < 12 ? "AM" : "PM"} today`);
+    }
+  }
+  return slots;
+})();
+
+// At least a day's lead time for a custom cake — otherwise a 3kg cake could be
+// "needed by" today, with no time to actually bake and decorate it.
+const minCakeDate = () => {
+  const d = new Date();
+  d.setDate(d.getDate() + 1);
+  return d.toISOString().slice(0, 10);
+};
+
 const FAVORITES_KEY = "garners_favorites";
 // Browser-local only — no account, no server round-trip. A real per-customer
 // favorites list would need a backend table + endpoints; this is the
@@ -87,7 +109,13 @@ function CustomCakeForm({ pricePerKg, onAdd }) {
       />
 
       <label className="field-label">Needed by</label>
-      <input type="date" value={neededBy} onChange={(e) => setNeededBy(e.target.value)} className="field-input" />
+      <input
+        type="date"
+        value={neededBy}
+        min={minCakeDate()}
+        onChange={(e) => setNeededBy(e.target.value)}
+        className="field-input"
+      />
 
       <div className="custom-cake-footer">
         <span className="custom-cake-price">₹{price || 0}</span>
@@ -191,7 +219,15 @@ export default function Order() {
   const [fulfillment, setFulfillment] = useState("pickup");
   const [deliveryZone, setDeliveryZone] = useState(ZONES[0].id);
   const [deliveryAddress, setDeliveryAddress] = useState("");
+  const [customerPhone, setCustomerPhone] = useState("");
   const { user } = useAuth();
+
+  // Prefill from the account's saved number once it's known (e.g. after the /auth/me
+  // refresh on page load) — still editable, and accounts created before this field
+  // existed just start blank.
+  useEffect(() => {
+    if (user?.phone) setCustomerPhone(user.phone);
+  }, [user]);
   const { cart, addToCart, addCustomItem, clearCart, total, count: cartCount } = useCart();
   const canOrder = user && user.role === "customer";
   const cartRef = useRef(null);
@@ -273,7 +309,8 @@ export default function Order() {
         paymentMethod,
         deliveryType: fulfillment,
         deliveryZone: fulfillment === "delivery" ? deliveryZone : undefined,
-        deliveryAddress: fulfillment === "delivery" ? deliveryAddress : undefined
+        deliveryAddress: fulfillment === "delivery" ? deliveryAddress : undefined,
+        customerPhone: customerPhone.trim() || undefined
       });
       setPlacedOrder(order.order);
       setActiveOrder(order.order);
@@ -465,14 +502,19 @@ export default function Order() {
                     </button>
                   </div>
 
+                  <input
+                    type="tel"
+                    placeholder="Phone number"
+                    value={customerPhone}
+                    onChange={(e) => setCustomerPhone(e.target.value)}
+                    className="field-input"
+                  />
+
                   {fulfillment === "pickup" ? (
-                    <input
-                      type="text"
-                      placeholder="Pickup time (e.g. 5:00 PM today)"
-                      value={pickupTime}
-                      onChange={(e) => setPickupTime(e.target.value)}
-                      className="field-input"
-                    />
+                    <select value={pickupTime} onChange={(e) => setPickupTime(e.target.value)} className="field-input">
+                      <option value="">Pickup time…</option>
+                      {TIME_SLOTS.map((slot) => <option key={slot} value={slot}>{slot}</option>)}
+                    </select>
                   ) : (
                     <>
                       <select value={deliveryZone} onChange={(e) => setDeliveryZone(e.target.value)} className="field-input">
@@ -487,13 +529,10 @@ export default function Order() {
                         className="field-input field-textarea"
                         rows={2}
                       />
-                      <input
-                        type="text"
-                        placeholder="Delivery time (e.g. 5:00 PM today)"
-                        value={pickupTime}
-                        onChange={(e) => setPickupTime(e.target.value)}
-                        className="field-input"
-                      />
+                      <select value={pickupTime} onChange={(e) => setPickupTime(e.target.value)} className="field-input">
+                        <option value="">Delivery time…</option>
+                        {TIME_SLOTS.map((slot) => <option key={slot} value={slot}>{slot}</option>)}
+                      </select>
                       {belowMinOrder && (
                         <p className="checkout-error">This zone needs a minimum order of ₹{selectedZone.minOrder}.</p>
                       )}
@@ -538,7 +577,7 @@ export default function Order() {
                     placing ||
                     isClosedToday ||
                     belowMinOrder ||
-                    (fulfillment === "delivery" && !deliveryAddress.trim())
+                    (fulfillment === "delivery" && (!deliveryAddress.trim() || !customerPhone.trim()))
                   }
                   className="btn-checkout"
                 >

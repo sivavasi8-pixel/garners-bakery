@@ -1,11 +1,16 @@
 import { useEffect, useState } from "react";
 import { useParams, Link } from "react-router-dom";
 import { api } from "../api";
+import { useAuth } from "../auth/AuthContext";
 
 export default function Receipt() {
   const { id } = useParams();
+  const { user } = useAuth();
   const [order, setOrder] = useState(null);
   const [error, setError] = useState(null);
+  // The root URL is the customer menu now — owner/staff viewing a receipt from
+  // Orders/POS should go back to their own dashboard, not the storefront.
+  const backTo = user?.role === "customer" ? "/order" : "/dashboard";
 
   useEffect(() => {
     api.getOrder(id).then((d) => setOrder(d.order)).catch((e) => setError(e.message));
@@ -17,7 +22,7 @@ export default function Receipt() {
   return (
     <div style={{ padding: "28px", maxWidth: "420px", margin: "0 auto" }}>
       <div className="no-print" style={{ marginBottom: "16px", display: "flex", justifyContent: "space-between" }}>
-        <Link to="/" style={{ fontSize: "13px", color: "var(--green)" }}>← Back</Link>
+        <Link to={backTo} style={{ fontSize: "13px", color: "var(--green)" }}>← Back</Link>
         <button
           onClick={() => window.print()}
           style={{ padding: "6px 14px", fontSize: "12px", border: "1px solid var(--border-strong)", borderRadius: "8px", background: "var(--surface-1)" }}
@@ -70,9 +75,23 @@ export default function Receipt() {
             <span>{order.status}</span>
           </div>
           <div style={{ display: "flex", justifyContent: "space-between", marginTop: "2px" }}>
-            <span>Pickup</span>
+            <span>{order.deliveryType === "delivery" ? "Delivery" : "Pickup"}</span>
             <span>{order.pickupTime || "—"}</span>
           </div>
+          {order.deliveryType === "delivery" && (
+            <div style={{ marginTop: "2px" }}>
+              <div style={{ display: "flex", justifyContent: "space-between" }}>
+                <span>Address</span>
+                <span style={{ textAlign: "right", maxWidth: "70%" }}>{order.deliveryAddress}</span>
+              </div>
+            </div>
+          )}
+          {order.customerPhone && (
+            <div style={{ display: "flex", justifyContent: "space-between", marginTop: "2px" }}>
+              <span>Phone</span>
+              <span>{order.customerPhone}</span>
+            </div>
+          )}
         </div>
 
         <p style={{ textAlign: "center", marginTop: "20px", marginBottom: 0, fontSize: "11px", color: "var(--text-muted)" }}>

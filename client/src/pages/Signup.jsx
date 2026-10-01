@@ -15,6 +15,7 @@ const inputStyle = {
 export default function Signup() {
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
+  const [phone, setPhone] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState(null);
   const [submitting, setSubmitting] = useState(false);
@@ -26,7 +27,7 @@ export default function Signup() {
     setError(null);
     setSubmitting(true);
     try {
-      await signup(name, email, password);
+      await signup(name, email, password, phone);
       navigate("/order");
     } catch (err) {
       setError(err.message);
@@ -60,13 +61,26 @@ export default function Signup() {
           required
         />
         <input
+          type="tel"
+          placeholder="Mobile number"
+          value={phone}
+          onChange={(e) => setPhone(e.target.value)}
+          style={inputStyle}
+          pattern="[+\d][\d\s-]{6,19}"
+          title="Enter a valid phone number"
+          required
+        />
+        <p style={{ margin: "-6px 0 12px", fontSize: "11px", color: "var(--text-secondary)" }}>
+          So we can reach you about delivery orders.
+        </p>
+        <input
           type="password"
-          placeholder="Password (min 6 characters)"
+          placeholder="Password (min 8 characters)"
           value={password}
           onChange={(e) => setPassword(e.target.value)}
           style={inputStyle}
           required
-          minLength={6}
+          minLength={8}
         />
         {error && <p style={{ color: "var(--red)", fontSize: "13px", marginBottom: "12px" }}>{error}</p>}
         <button

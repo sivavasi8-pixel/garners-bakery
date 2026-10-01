@@ -4,8 +4,13 @@ const staff = require("../data/staff");
 const asyncHandler = require("../middleware/asyncHandler");
 
 exports.getSummary = asyncHandler(async (req, res) => {
-  const [allOrders, todaysOrders, inv, staffList] = await Promise.all([
-    orders.getAll(),
+  // Used to load every order ever placed (orders.getAll()) just to get a pending
+  // count and the latest 5 — on a dashboard that re-fetches on every mutation, that
+  // got slower every day the bakery stayed open. countActive/getRecent do the same
+  // filtering in SQL instead of pulling full order history into Node each time.
+  const [recentOrders, pendingCount, todaysOrders, inv, staffList] = await Promise.all([
+    orders.getRecent(5),
+    orders.countActive(),
     orders.getToday(),
     inventory.getAll(),
     staff.getAll()
@@ -14,10 +19,6 @@ exports.getSummary = asyncHandler(async (req, res) => {
   // Cancelled orders never became sales, so they don't count toward revenue.
   const todaysSales = todaysOrders.filter((o) => o.status !== "cancelled");
   const todaysRevenue = todaysSales.reduce((sum, o) => sum + (o.total || 0), 0);
-  // Pending counts every unfulfilled order regardless of date — an order from
-  // yesterday still needs baking, it shouldn't drop off the radar at midnight.
-  // Cancelled orders are finished too, just not delivered.
-  const pending = allOrders.filter((o) => o.status !== "delivered" && o.status !== "cancelled").length;
 
   const lowStock = inv.filter((i) => i.status === "low_stock" || i.status === "out_of_stock");
 
@@ -26,11 +27,11 @@ exports.getSummary = asyncHandler(async (req, res) => {
   res.json({
     todaysRevenue,
     ordersToday: todaysSales.length,
-    pendingOrders: pending,
+    pendingOrders: pendingCount,
     staffOnShift: onShift,
     staffTotal: staffList.length,
     lowStockCount: lowStock.length,
     lowStockItems: lowStock,
-    recentOrders: allOrders.slice(0, 5)
+    recentOrders
   });
 });

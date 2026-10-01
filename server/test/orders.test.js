@@ -79,7 +79,10 @@ stub("data/orders.js", {
     return o;
   },
   getAll: async () => [...db.orders].reverse(),
-  getToday: async () => db.orders
+  getToday: async () => db.orders,
+  getActive: async () => db.orders.filter((o) => o.status !== "delivered" && o.status !== "cancelled"),
+  getRecent: async (limit = 5) => [...db.orders].reverse().slice(0, limit),
+  countActive: async () => db.orders.filter((o) => o.status !== "delivered" && o.status !== "cancelled").length
 });
 stub("data/expenses.js", { getAll: async () => [] });
 stub("data/staff.js", {
@@ -174,10 +177,25 @@ test("online UPI/card orders start unpaid; POS sales are paid", async () => {
 test("delivery fee is added on the server", async () => {
   const r = await call(orderController.createOrder, {
     user: customer,
-    body: { items: [{ menuItemId: 1, qty: 2 }], deliveryType: "delivery", deliveryZone: "whitefield", deliveryAddress: "12 Main Rd" }
+    body: {
+      items: [{ menuItemId: 1, qty: 2 }],
+      deliveryType: "delivery",
+      deliveryZone: "whitefield",
+      deliveryAddress: "12 Main Rd",
+      customerPhone: "9876543210"
+    }
   });
   assert.equal(r.body.order.deliveryFee, 30);
   assert.equal(r.body.order.total, 470);
+  assert.equal(r.body.order.customerPhone, "9876543210");
+});
+
+test("delivery without a phone number is rejected", async () => {
+  const r = await call(orderController.createOrder, {
+    user: customer,
+    body: { items: [{ menuItemId: 1, qty: 2 }], deliveryType: "delivery", deliveryZone: "whitefield", deliveryAddress: "12 Main Rd" }
+  });
+  assert.equal(r.status, 400);
 });
 
 test("if stock deduction fails, the order is not saved", async () => {

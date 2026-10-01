@@ -18,6 +18,9 @@ const MAX_GALLERY_IMAGES = 4;
 const isCurrentlySpecial = (row) =>
   row.is_special && (!row.special_until || new Date(row.special_until) > new Date());
 
+// `has_image` is only present on rows from SELECT_WITH_GALLERY (which deliberately
+// never selects the bytea); a raw INSERT/UPDATE ... RETURNING * row (from create())
+// still carries image_data itself, so fall back to checking that directly.
 const mapRow = (row) =>
   row && {
     id: row.id,
@@ -27,7 +30,7 @@ const mapRow = (row) =>
     unit: row.unit,
     inStock: row.in_stock,
     description: row.description,
-    imageUrl: row.image_data ? `/api/menu/${row.id}/image` : null,
+    imageUrl: (row.has_image !== undefined ? row.has_image : Boolean(row.image_data)) ? `/api/menu/${row.id}/image` : null,
     isSpecial: isCurrentlySpecial(row),
     specialUntil: row.special_until,
     isPopular: row.is_popular,
@@ -37,8 +40,12 @@ const mapRow = (row) =>
   };
 
 // Every row-returning query needs the same gallery aggregation, so it lives once here.
+// Deliberately never selects image_data/image_mime (each photo can be up to 5MB) —
+// every menu load was downloading every item's full photo just to render a list;
+// has_image is enough to know whether to request the dedicated image endpoint.
 const SELECT_WITH_GALLERY = `
-  select m.*,
+  select m.id, m.name, m.category, m.price, m.unit, m.in_stock, m.description,
+    (m.image_data is not null) as has_image, m.is_special, m.special_until, m.is_popular,
     coalesce(
       json_agg(json_build_object('id', gi.id) order by gi.sort_order, gi.id)
         filter (where gi.id is not null),

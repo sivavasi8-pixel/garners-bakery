@@ -1,4 +1,4 @@
-import { Routes, Route } from "react-router-dom";
+import { Routes, Route, Navigate } from "react-router-dom";
 import CustomerNav from "./components/CustomerNav";
 import AdminLayout from "./components/admin/AdminLayout";
 import ProtectedRoute from "./auth/ProtectedRoute";
@@ -16,6 +16,7 @@ import POS from "./pages/POS";
 import Receipt from "./pages/Receipt";
 import Orders from "./pages/Orders";
 import Poster from "./pages/Poster";
+import NotFound from "./pages/NotFound";
 
 export default function App() {
   return (
@@ -24,6 +25,10 @@ export default function App() {
           Browsing the menu stays public; Order.jsx itself gates checkout on
           being logged in as a customer. */}
       <Route element={<CartProvider><CustomerNav /></CartProvider>}>
+        {/* The menu is the storefront's front door — a shared WhatsApp/Instagram link
+            to the root URL used to land on the owner/staff login instead. A redirect
+            (not a duplicate route) so the address bar and nav active-state agree. */}
+        <Route path="/" element={<Navigate to="/order" replace />} />
         <Route path="/order" element={<Order />} />
         <Route
           path="/my-orders"
@@ -45,7 +50,7 @@ export default function App() {
           </ProtectedRoute>
         }
       >
-        <Route path="/" element={<Dashboard />} />
+        <Route path="/dashboard" element={<Dashboard />} />
         <Route path="/pos" element={<POS />} />
         <Route path="/orders" element={<Orders />} />
         <Route path="/inventory" element={<Inventory />} />
@@ -87,6 +92,8 @@ export default function App() {
           </ProtectedRoute>
         }
       />
+
+      <Route path="*" element={<NotFound />} />
     </Routes>
   );
 }
