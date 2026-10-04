@@ -35,9 +35,9 @@ exports.login = asyncHandler(async (req, res) => {
 });
 
 exports.signup = asyncHandler(async (req, res) => {
-  const { name, email, password, phone } = req.body;
-  if (!name || !email || !password || !phone) {
-    return res.status(400).json({ error: "name, email, phone and password are required" });
+  const { name, email, password, phone, pin } = req.body;
+  if (!name || !email || !password || !phone || !pin) {
+    return res.status(400).json({ error: "name, email, phone, password and PIN are required" });
   }
   if (!EMAIL_RE.test(email)) {
     return res.status(400).json({ error: "Enter a valid email address" });
@@ -48,6 +48,9 @@ exports.signup = asyncHandler(async (req, res) => {
   if (password.length < 8) {
     return res.status(400).json({ error: "password must be at least 8 characters" });
   }
+  if (!/^\d{6}$/.test(pin)) {
+    return res.status(400).json({ error: "PIN must be exactly 6 digits" });
+  }
   if (await users.findByEmail(email)) {
     return res.status(409).json({ error: "An account with that email already exists" });
   }
@@ -56,7 +59,8 @@ exports.signup = asyncHandler(async (req, res) => {
     name,
     email,
     phone: phone.trim(),
-    passwordHash: bcrypt.hashSync(password, 10)
+    passwordHash: bcrypt.hashSync(password, 10),
+    pinHash: bcrypt.hashSync(pin, 10)
   });
   res.status(201).json({ token: signToken(user), user: publicUser(user) });
 });
@@ -65,4 +69,36 @@ exports.me = asyncHandler(async (req, res) => {
   const user = await users.findById(req.user.id);
   if (!user) return res.status(404).json({ error: "User not found" });
   res.json({ user: publicUser(user) });
+});
+
+// Self-service: customer provides email + PIN + new password — no admin needed.
+// Rate-limited via the authLimiter in index.js (same window as /login).
+exports.resetPassword = asyncHandler(async (req, res) => {
+  const { email, pin, newPassword } = req.body;
+  if (!email || !pin || !newPassword) {
+    return res.status(400).json({ error: "email, pin and newPassword are required" });
+  }
+  if (newPassword.length < 8) {
+    return res.status(400).json({ error: "New password must be at least 8 characters" });
+  }
+  const user = await users.findByEmail(email);
+  // Deliberately vague so you can't enumerate accounts.
+  if (!user || user.role !== "customer" || !user.pinHash || !bcrypt.compareSync(pin, user.pinHash)) {
+    return res.status(401).json({ error: "Email or PIN is incorrect" });
+  }
+  await users.resetPassword(user.id, bcrypt.hashSync(newPassword, 10));
+  res.json({ message: "Password updated — you can now log in with your new password." });
+});
+
+// Customer can't remember their PIN → flag the account for admin attention.
+// No auth required (they're locked out); email identifies the account.
+exports.requestPinReset = asyncHandler(async (req, res) => {
+  const { email } = req.body;
+  if (!email) return res.status(400).json({ error: "email is required" });
+  const user = await users.findByEmail(email);
+  // Always respond 200 — don't reveal whether an account exists for that email.
+  if (user && user.role === "customer") {
+    await users.requestPinReset(user.id);
+  }
+  res.json({ message: "Request noted — the store will be in touch to help you reset your PIN." });
 });

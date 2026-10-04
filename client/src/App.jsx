@@ -9,6 +9,7 @@ import Staff from "./pages/Staff";
 import Order from "./pages/Order";
 import Login from "./pages/Login";
 import Signup from "./pages/Signup";
+import ResetPassword from "./pages/ResetPassword";
 import MenuAdmin from "./pages/MenuAdmin";
 import MyOrders from "./pages/MyOrders";
 import Reports from "./pages/Reports";
@@ -16,6 +17,7 @@ import POS from "./pages/POS";
 import Receipt from "./pages/Receipt";
 import Orders from "./pages/Orders";
 import Poster from "./pages/Poster";
+import Customers from "./pages/Customers";
 import NotFound from "./pages/NotFound";
 
 export default function App() {
@@ -40,6 +42,7 @@ export default function App() {
         />
         <Route path="/login" element={<Login />} />
         <Route path="/signup" element={<Signup />} />
+        <Route path="/reset-password" element={<ResetPassword />} />
       </Route>
 
       {/* Owner/staff backend shell: clean software look (AdminLayout + admin-theme.css) */}
@@ -55,6 +58,7 @@ export default function App() {
         <Route path="/orders" element={<Orders />} />
         <Route path="/inventory" element={<Inventory />} />
         <Route path="/staff" element={<Staff />} />
+        <Route path="/customers" element={<Customers />} />
         <Route
           path="/menu-admin"
           element={

@@ -9,7 +9,13 @@ const MIGRATIONS = [
   "alter table users add column if not exists phone text",
   "alter table orders add column if not exists customer_phone text",
   // The booked pickup/delivery day.
-  "alter table orders add column if not exists pickup_date date"
+  "alter table orders add column if not exists pickup_date date",
+  // Customer PIN — used for self-service password reset (email + PIN + new password).
+  // Nullable so existing accounts aren't broken; set at signup going forward.
+  "alter table users add column if not exists pin_hash text",
+  // Flag set when a customer can't remember their PIN and asks an admin to reset it.
+  // Cleared (along with pin_hash) when an admin resets the PIN from the Customers page.
+  "alter table users add column if not exists pin_reset_requested_at timestamptz"
 ];
 
 async function migrate() {

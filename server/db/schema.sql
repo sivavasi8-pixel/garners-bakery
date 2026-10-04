@@ -11,7 +11,9 @@ create table if not exists users (
   password_hash text not null,
   role text not null check (role in ('owner', 'staff', 'customer')),
   staff_id integer, -- links a staff-role account to a row in staff.id, if any
-  phone text -- required at signup going forward; nullable so pre-existing accounts aren't broken
+  phone text, -- required at signup going forward; nullable so pre-existing accounts aren't broken
+  pin_hash text, -- 6-digit bcrypt PIN; customers use it to self-service reset their password
+  pin_reset_requested_at timestamptz -- set when a customer asks an admin to reset their PIN; cleared by adminSetPin
 );
 
 create table if not exists staff (

@@ -26,9 +26,13 @@ async function request(path, options = {}) {
 
 export const api = {
   login: (email, password) => request("/auth/login", { method: "POST", body: JSON.stringify({ email, password }) }),
-  signup: (name, email, password, phone) =>
-    request("/auth/signup", { method: "POST", body: JSON.stringify({ name, email, password, phone }) }),
+  signup: (name, email, password, phone, pin) =>
+    request("/auth/signup", { method: "POST", body: JSON.stringify({ name, email, password, phone, pin }) }),
   me: () => request("/auth/me"),
+  resetPassword: (email, pin, newPassword) =>
+    request("/auth/reset-password", { method: "POST", body: JSON.stringify({ email, pin, newPassword }) }),
+  requestPinReset: (email) =>
+    request("/auth/request-pin-reset", { method: "POST", body: JSON.stringify({ email }) }),
 
   getDashboardSummary: () => request("/dashboard/summary"),
   getMenu: (category) => request(`/menu${category ? `?category=${category}` : ""}`),
@@ -86,5 +90,11 @@ export const api = {
 
   getExpenses: () => request("/expenses"),
   createExpense: (expense) => request("/expenses", { method: "POST", body: JSON.stringify(expense) }),
-  deleteExpense: (id) => request(`/expenses/${id}`, { method: "DELETE" })
+  deleteExpense: (id) => request(`/expenses/${id}`, { method: "DELETE" }),
+
+  getCustomers: () => request("/customers"),
+  adminResetCustomerPin: (id, newPin) =>
+    request(`/customers/${id}/reset-pin`, { method: "POST", body: JSON.stringify({ newPin }) }),
+  adminResetCustomerPassword: (id, newPassword) =>
+    request(`/customers/${id}/reset-password`, { method: "POST", body: JSON.stringify({ newPassword }) })
 };

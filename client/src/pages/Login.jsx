@@ -81,6 +81,10 @@ export default function Login() {
       <p style={{ fontSize: "12px", color: "var(--text-secondary)", marginTop: "16px" }}>
         New customer? <Link to="/signup" style={{ color: "var(--green)" }}>Create an account</Link>
       </p>
+      <p style={{ fontSize: "12px", color: "var(--text-secondary)", marginTop: "8px" }}>
+        Forgot your password?{" "}
+        <Link to="/reset-password" style={{ color: "var(--green)" }}>Reset it with your PIN</Link>
+      </p>
 
       {/* import.meta.env.DEV is Vite's own flag — true under `vite dev`, false in any
           production build (`vite build`), so this disappears automatically the moment

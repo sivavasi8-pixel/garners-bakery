@@ -1,5 +1,11 @@
 // Set a new password for any account, straight in the database.
 //
+// Still useful for:
+//   - Owner/staff accounts (they have no PIN, so the admin Customers page can't help them)
+//   - True break-glass scenarios where the admin UI itself is unreachable
+//
+// For day-to-day customer password resets, use the Customers page in the admin console.
+//
 //   cd server
 //   node scripts/set-password.js owner@garners.test 'a-new-long-password'
 //

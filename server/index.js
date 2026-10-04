@@ -14,6 +14,7 @@ const authRoutes = require("./routes/authRoutes");
 const reportsRoutes = require("./routes/reportsRoutes");
 const notificationsRoutes = require("./routes/notificationsRoutes");
 const expensesRoutes = require("./routes/expensesRoutes");
+const customerRoutes = require("./routes/customerRoutes");
 
 const app = express();
 const PORT = process.env.PORT || 4000;
@@ -35,6 +36,8 @@ const authLimiter = rateLimit({
 });
 app.use("/api/auth/login", authLimiter);
 app.use("/api/auth/signup", authLimiter);
+app.use("/api/auth/reset-password", authLimiter);
+app.use("/api/auth/request-pin-reset", authLimiter);
 
 app.get("/api/health", (req, res) => res.json({ status: "ok", service: "GARNERS Bakery API" }));
 
@@ -47,6 +50,7 @@ app.use("/api/dashboard", dashboardRoutes);
 app.use("/api/reports", reportsRoutes);
 app.use("/api/notifications", notificationsRoutes);
 app.use("/api/expenses", expensesRoutes);
+app.use("/api/customers", customerRoutes);
 
 // Serve the built React app (client/dist), if it exists — it only exists after
 // `npm run build` in client/, which is what the deploy build step runs. Local dev

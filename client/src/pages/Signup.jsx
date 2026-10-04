@@ -16,6 +16,7 @@ export default function Signup() {
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [phone, setPhone] = useState("");
+  const [pin, setPin] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState(null);
   const [submitting, setSubmitting] = useState(false);
@@ -25,9 +26,13 @@ export default function Signup() {
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError(null);
+    if (!/^\d{6}$/.test(pin)) {
+      setError("PIN must be exactly 6 digits");
+      return;
+    }
     setSubmitting(true);
     try {
-      await signup(name, email, password, phone);
+      await signup(name, email, password, phone, pin);
       navigate("/order");
     } catch (err) {
       setError(err.message);
@@ -72,6 +77,21 @@ export default function Signup() {
         />
         <p style={{ margin: "-6px 0 12px", fontSize: "11px", color: "var(--text-secondary)" }}>
           So we can reach you about delivery orders.
+        </p>
+        <input
+          type="password"
+          placeholder="6-digit PIN"
+          value={pin}
+          onChange={(e) => setPin(e.target.value)}
+          style={inputStyle}
+          inputMode="numeric"
+          pattern="\d{6}"
+          maxLength={6}
+          title="Choose a 6-digit PIN"
+          required
+        />
+        <p style={{ margin: "-6px 0 12px", fontSize: "11px", color: "var(--text-secondary)" }}>
+          Remember this — you'll use it to reset your password if you ever forget it.
         </p>
         <input
           type="password"
