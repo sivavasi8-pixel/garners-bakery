@@ -576,7 +576,26 @@ export default function Order() {
                     </div>
                   )}
 
-                  {cart.length > 0 && (
+                  {/* Login prompt — shown immediately after the item list when the user
+                      isn't logged in. Keeps the checkout form hidden so they don't
+                      waste time filling in address/time/payment before realising they
+                      need an account. The bag persists across login (CartContext uses
+                      localStorage), so "Your bag stays right here" is accurate. */}
+                  {!canOrder && cart.length > 0 && (
+                    <div className="login-gate">
+                      <i className="ti ti-lock" aria-hidden="true" style={{ fontSize: 28, color: "var(--green)", marginBottom: 8 }} />
+                      <p className="login-gate-title">Log in to place your order</p>
+                      <p className="login-gate-sub">Your bag stays right here while you sign in.</p>
+                      <Link to="/login" state={{ from: "/order" }} className="btn-checkout">
+                        Log in
+                      </Link>
+                      <Link to="/signup" className="btn-secondary">
+                        Create an account
+                      </Link>
+                    </div>
+                  )}
+
+                  {canOrder && cart.length > 0 && (
                     <>
                       <fieldset className="checkout-step">
                         <legend>How do you want it?</legend>
@@ -738,31 +757,20 @@ export default function Order() {
 
                   {checkoutError && <p className="checkout-error" role="alert">{checkoutError}</p>}
 
-                  {canOrder ? (
-                    cart.length > 0 && (
-                      <>
-                        {missing.length > 0 && !isClosedToday && (
-                          <p className="missing-note">To place your order, add {missing.join(", ")}.</p>
-                        )}
-                        <button
-                          type="button"
-                          onClick={handleCheckout}
-                          disabled={placing || isClosedToday || belowMinOrder || missing.length > 0}
-                          className="btn-checkout"
-                        >
-                          {placing ? "Placing order…" : isClosedToday ? "Ordering reopens tomorrow" : `Place order · ₹${grandTotal.toLocaleString("en-IN")}`}
-                        </button>
-                      </>
-                    )
-                  ) : (
-                    cart.length > 0 && (
-                      <p className="login-prompt">
-                        <Link to="/login" state={{ from: "/order" }}>Log in</Link>
-                        {" "}or{" "}
-                        <Link to="/signup">create an account</Link>
-                        {" "}to place your order. Your bag stays right here.
-                      </p>
-                    )
+                  {canOrder && cart.length > 0 && (
+                    <>
+                      {missing.length > 0 && !isClosedToday && (
+                        <p className="missing-note">To place your order, add {missing.join(", ")}.</p>
+                      )}
+                      <button
+                        type="button"
+                        onClick={handleCheckout}
+                        disabled={placing || isClosedToday || belowMinOrder || missing.length > 0}
+                        className="btn-checkout"
+                      >
+                        {placing ? "Placing order…" : isClosedToday ? "Ordering reopens tomorrow" : `Place order · ₹${grandTotal.toLocaleString("en-IN")}`}
+                      </button>
+                    </>
                   )}
                 </>
               )}
@@ -1064,6 +1072,16 @@ export default function Order() {
 
         .login-prompt { font-size: 14px; color: var(--text-secondary); margin: 0; line-height: 1.5; }
         .login-prompt a { color: var(--green); font-weight: 700; }
+
+        .login-gate {
+          display: flex; flex-direction: column; align-items: center; text-align: center;
+          gap: 10px; padding: 24px 20px; margin: 8px 0;
+          background: var(--surface-1); border: 1px solid var(--border); border-radius: var(--radius-lg);
+        }
+        .login-gate-title { margin: 0; font-size: 17px; font-weight: 700; color: var(--text-primary); }
+        .login-gate-sub { margin: 0; font-size: 13px; color: var(--text-secondary); }
+        .login-gate .btn-checkout { width: 100%; text-align: center; }
+        .login-gate .btn-secondary { width: 100%; text-align: center; }
 
         .placed-order-card { display: flex; flex-direction: column; gap: 10px; align-items: stretch; text-align: center; }
         .placed-icon {
