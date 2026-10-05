@@ -609,7 +609,16 @@ export default function Order() {
                               type="button"
                               aria-pressed={fulfillment === f.id}
                               className={`segment${fulfillment === f.id ? " on" : ""}`}
-                              onClick={() => setFulfillment(f.id)}
+                              onClick={() => {
+                                setFulfillment(f.id);
+                                // Clear a pickup slot that falls outside the delivery window
+                                // so the user isn't left with a silently invalid selection.
+                                if (f.id === "delivery" && pickupSlot) {
+                                  const [h, m] = pickupSlot.split(":").map(Number);
+                                  const mins = h * 60 + m;
+                                  if (mins < 15 * 60 || mins >= 18 * 60) setPickupSlot(null);
+                                }
+                              }}
                             >
                               <span>{f.label}</span>
                               <small>{f.note}</small>
@@ -704,18 +713,34 @@ export default function Order() {
                               ))}
                             </div>
                             {hasCustomCake && <p className="delivery-note">Custom cakes need a day's notice, so today isn't available.</p>}
+                            {fulfillment === "delivery" && (
+                              <p className="delivery-note">
+                                <i className="ti ti-clock" style={{ fontSize: 13, marginRight: 4 }} aria-hidden="true" />
+                                Delivery is available between <strong>3:00 PM – 6:00 PM</strong>.
+                              </p>
+                            )}
                             <div className="slot-grid">
-                              {(selectedDay?.slots || []).map((s) => (
-                                <button
-                                  key={s.value}
-                                  type="button"
-                                  aria-pressed={pickupSlot === s.value}
-                                  className={`slot${pickupSlot === s.value ? " on" : ""}`}
-                                  onClick={() => setPickupSlot(s.value)}
-                                >
-                                  {s.label}
-                                </button>
-                              ))}
+                              {(selectedDay?.slots || []).map((s) => {
+                                const [h, m] = s.value.split(":").map(Number);
+                                const mins = h * 60 + m;
+                                // Delivery window: 15:00–18:00 (3 PM slot starts at 15:00,
+                                // last delivery slot is 17:30 so it finishes by ~18:00).
+                                const outsideDeliveryWindow =
+                                  fulfillment === "delivery" && (mins < 15 * 60 || mins >= 18 * 60);
+                                return (
+                                  <button
+                                    key={s.value}
+                                    type="button"
+                                    aria-pressed={pickupSlot === s.value}
+                                    disabled={outsideDeliveryWindow}
+                                    title={outsideDeliveryWindow ? "Delivery only between 3:00 PM – 6:00 PM" : undefined}
+                                    className={`slot${pickupSlot === s.value ? " on" : ""}${outsideDeliveryWindow ? " slot-unavailable" : ""}`}
+                                    onClick={() => setPickupSlot(s.value)}
+                                  >
+                                    {s.label}
+                                  </button>
+                                );
+                              })}
                             </div>
                           </>
                         )}
@@ -1044,6 +1069,7 @@ export default function Order() {
           color: var(--text-primary); font: 600 14px var(--font-body);
         }
         .slot.on { border: 2px solid var(--green); background: var(--green-tint); color: var(--green); }
+        .slot.slot-unavailable { opacity: 0.35; cursor: not-allowed; }
 
         .delivery-note { font-size: 13px; color: var(--text-secondary); margin: 0; }
         .summary {

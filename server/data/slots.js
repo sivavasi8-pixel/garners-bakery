@@ -74,7 +74,7 @@ const upcomingDays = (now = Date.now()) => {
 };
 
 // Throws a message (string) when the choice isn't bookable; returns the display text otherwise.
-const validateSlot = ({ date, slot, hasCustomCake }, now = Date.now()) => {
+const validateSlot = ({ date, slot, hasCustomCake, deliveryType }, now = Date.now()) => {
   if (!/^\d{4}-\d{2}-\d{2}$/.test(String(date || "")) || !SLOTS.includes(slot)) {
     return { error: "Choose a day and time for your order" };
   }
@@ -85,6 +85,13 @@ const validateSlot = ({ date, slot, hasCustomCake }, now = Date.now()) => {
   if (hasCustomCake) {
     const earliest = istDate(now + CUSTOM_CAKE_LEAD_DAYS * DAY_MS);
     if (date < earliest) return { error: "Custom cakes need at least a day's notice — please pick a later day" };
+  }
+  // Delivery is only available 3:00 PM – 6:00 PM.
+  if (deliveryType === "delivery") {
+    const mins = slotMinutes(slot);
+    if (mins < 15 * 60 || mins >= 18 * 60) {
+      return { error: "Delivery is only available between 3:00 PM and 6:00 PM — please pick a time in that window" };
+    }
   }
   return { text: `${dateLabel(date)}, ${slotLabel(slot)}` };
 };

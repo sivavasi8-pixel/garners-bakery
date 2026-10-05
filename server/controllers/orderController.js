@@ -153,7 +153,7 @@ exports.createOrder = asyncHandler(async (req, res) => {
     let bookedDate = null;
     if (isCustomer || pickupDate || pickupSlot) {
       const hasCustomCake = lines.some((l) => l.size !== undefined);
-      const slot = validateSlot({ date: pickupDate, slot: pickupSlot, hasCustomCake });
+      const slot = validateSlot({ date: pickupDate, slot: pickupSlot, hasCustomCake, deliveryType });
       if (slot.error) throw badRequest(slot.error);
       pickupText = slot.text;
       bookedDate = pickupDate;
