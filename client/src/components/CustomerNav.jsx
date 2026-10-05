@@ -1,6 +1,7 @@
 import { NavLink, Link, Outlet, useNavigate } from "react-router-dom";
 import { useAuth } from "../auth/AuthContext";
 import { useCart } from "../cart/CartContext";
+import PushToggle from "./PushToggle";
 
 export default function CustomerNav() {
   const { user, logout } = useAuth();
@@ -43,6 +44,9 @@ export default function CustomerNav() {
           <div className="topbar-right">
             {user ? (
               <>
+                {/* Only customers need their own order's status pushed to them —
+                    owner/staff get the same toggle in the admin shell instead. */}
+                {user.role === "customer" && <PushToggle className="topbar-ghost" />}
                 <span className="topbar-user">{user.name}</span>
                 <button className="topbar-ghost" onClick={handleLogout}>Log out</button>
               </>

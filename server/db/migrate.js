@@ -15,7 +15,17 @@ const MIGRATIONS = [
   "alter table users add column if not exists pin_hash text",
   // Flag set when a customer can't remember their PIN and asks an admin to reset it.
   // Cleared (along with pin_hash) when an admin resets the PIN from the Customers page.
-  "alter table users add column if not exists pin_reset_requested_at timestamptz"
+  "alter table users add column if not exists pin_reset_requested_at timestamptz",
+  // Push-notification device tokens (Firebase Cloud Messaging) — one row per
+  // (user, device). A token is unique across users: re-registering the same
+  // browser/device just moves its row to whoever is now logged in there.
+  `create table if not exists push_tokens (
+     id serial primary key,
+     user_id integer not null references users(id) on delete cascade,
+     token text not null unique,
+     created_at timestamptz not null default now()
+   )`,
+  "create index if not exists idx_push_tokens_user_id on push_tokens(user_id)"
 ];
 
 async function migrate() {

@@ -1,4 +1,7 @@
+import { useEffect } from "react";
 import { Routes, Route, Navigate } from "react-router-dom";
+import { useAuth } from "./auth/AuthContext";
+import { setupForegroundPushListener } from "./push";
 import CustomerNav from "./components/CustomerNav";
 import AdminLayout from "./components/admin/AdminLayout";
 import ProtectedRoute from "./auth/ProtectedRoute";
@@ -21,6 +24,14 @@ import Customers from "./pages/Customers";
 import NotFound from "./pages/NotFound";
 
 export default function App() {
+  const { user } = useAuth();
+
+  // Only matters once logged in (a push is always addressed to a user id or
+  // role) — safe to call again on every login since it just adds a listener.
+  useEffect(() => {
+    if (user) setupForegroundPushListener();
+  }, [user]);
+
   return (
     <Routes>
       {/* Customer storefront shell: warm retail look (CustomerNav + theme.css).

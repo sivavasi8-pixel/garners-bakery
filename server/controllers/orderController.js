@@ -6,6 +6,11 @@ const asyncHandler = require("../middleware/asyncHandler");
 const { withTransaction } = require("../config/transaction");
 const { ZONES, calculateFee } = require("../data/deliveryZones");
 const { upcomingDays, validateSlot } = require("../data/slots");
+const push = require("../services/push");
+
+const itemsLabel = (items) => items.map((i) => (i.qty > 1 ? `${i.name} x${i.qty}` : i.name)).join(", ");
+
+const STATUS_LABEL = { placed: "placed", baking: "being baked", ready: "ready for pickup", delivered: "delivered" };
 
 // The bakery is closed Mondays (Asia/Kolkata) — matches the static "closed on
 // Mondays" graphic that used to be posted by hand every week.
@@ -200,6 +205,14 @@ exports.createOrder = asyncHandler(async (req, res) => {
     return created;
   });
 
+  // Owner + every staff device — except the staff member who placed it
+  // themselves from the POS, who doesn't need telling about their own sale.
+  push.notifyRolesExcludingUser(["owner", "staff"], req.user.id, {
+    title: `New order #${order.id}`,
+    body: `${order.customerName} — ${itemsLabel(order.items)} — ₹${order.total} · ${order.channel}`,
+    data: { orderId: String(order.id) }
+  });
+
   res.status(201).json({ order });
 });
 
@@ -223,6 +236,24 @@ const cancelWithRestock = (orderId, user) =>
 
     const updated = await orders.updateStatus(orderId, "cancelled", db);
     await adjustStockForItems(order.items, "restock", db);
+
+    // Whichever side didn't do the cancelling is the side that needs telling —
+    // a customer backing out needs the kitchen to stop; the shop cancelling
+    // needs the customer to know not to expect it.
+    if (user.role === "customer") {
+      push.notifyRolesExcludingUser(["owner", "staff"], user.id, {
+        title: "Order cancelled",
+        body: `${order.customerName} cancelled order #${order.id}.`,
+        data: { orderId: String(order.id) }
+      });
+    } else if (order.customerId) {
+      push.notifyUsers([order.customerId], {
+        title: "Order cancelled",
+        body: `Order #${order.id} was cancelled.`,
+        data: { orderId: String(order.id) }
+      });
+    }
+
     return updated;
   });
 
@@ -250,6 +281,19 @@ exports.updateOrderStatus = asyncHandler(async (req, res) => {
     }
     return orders.updateStatus(req.params.id, status, db);
   });
+
+  // Customer-placed orders only — a POS walk-in has no account to notify.
+  if (order.customerId) {
+    push.notifyUsers([order.customerId], {
+      title: `Order #${order.id} ${STATUS_LABEL[status] || status}`,
+      body:
+        status === "ready"
+          ? "Your order is ready for pickup!"
+          : `Pickup: ${order.pickupTime || "TBD"}`,
+      data: { orderId: String(order.id) }
+    });
+  }
+
   res.json({ order });
 });
 

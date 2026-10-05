@@ -2,6 +2,7 @@ import { NavLink, Outlet, useNavigate } from "react-router-dom";
 import { useState } from "react";
 import { useAuth } from "../../auth/AuthContext";
 import NotificationBell from "../NotificationBell";
+import PushToggle from "../PushToggle";
 
 // Owner-only items are filtered in at render time (see navItems below) —
 // staff never sees Menu/Reports, matching the real role gate on those routes.
@@ -60,6 +61,7 @@ export default function AdminLayout() {
           <div className="admin-sidebar-bell">
             <NotificationBell align="left" openUpward />
           </div>
+          <PushToggle className="admin-nav-item" />
           <div className="admin-sidebar-user">
             {user?.name} <span>{user?.email}</span>
           </div>
@@ -180,6 +182,7 @@ function MobileTopbar({ navItems, onLogout }) {
             <i className="ti ti-building-store" aria-hidden="true" />
             <span>View shop</span>
           </a>
+          <PushToggle className="admin-nav-item" />
           <div className="admin-sidebar-user">
             {user?.name} <span>{user?.email}</span>
           </div>

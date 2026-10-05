@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { api } from "../api";
 import StatusBadge from "../components/StatusBadge";
+import PushToggle from "../components/PushToggle";
 import { paymentLabel } from "../paymentLabel";
 
 const ACTIVE = ["placed", "baking", "ready"];
@@ -142,7 +143,10 @@ export default function MyOrders() {
 
   return (
     <div className="page my-orders">
-      <h1 className="page-title">My orders</h1>
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, flexWrap: "wrap" }}>
+        <h1 className="page-title" style={{ margin: 0 }}>My orders</h1>
+        <PushToggle />
+      </div>
 
       {orders.length === 0 && (
         <div className="empty-state">

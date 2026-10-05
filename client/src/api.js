@@ -96,5 +96,8 @@ export const api = {
   adminResetCustomerPin: (id, newPin) =>
     request(`/customers/${id}/reset-pin`, { method: "POST", body: JSON.stringify({ newPin }) }),
   adminResetCustomerPassword: (id, newPassword) =>
-    request(`/customers/${id}/reset-password`, { method: "POST", body: JSON.stringify({ newPassword }) })
+    request(`/customers/${id}/reset-password`, { method: "POST", body: JSON.stringify({ newPassword }) }),
+
+  registerPushToken: (token) => request("/push/register", { method: "POST", body: JSON.stringify({ token }) }),
+  unregisterPushToken: (token) => request("/push/unregister", { method: "POST", body: JSON.stringify({ token }) })
 };
