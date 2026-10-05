@@ -7,6 +7,7 @@ const { withTransaction } = require("../config/transaction");
 const { ZONES, calculateFee } = require("../data/deliveryZones");
 const { upcomingDays, validateSlot } = require("../data/slots");
 const push = require("../services/push");
+const geocode = require("../services/geocode");
 
 const itemsLabel = (items) => items.map((i) => (i.qty > 1 ? `${i.name} x${i.qty}` : i.name)).join(", ");
 
@@ -138,14 +139,33 @@ exports.createOrder = asyncHandler(async (req, res) => {
 
   const isDelivery = deliveryType === "delivery";
   const address = clip(deliveryAddress, 500);
-  // Set only when the customer used "use my current location" — a plain typed
-  // address (most orders) has no coordinates, and that's fine.
-  const lat = Number.isFinite(Number(deliveryLat)) ? Number(deliveryLat) : null;
-  const lng = Number.isFinite(Number(deliveryLng)) ? Number(deliveryLng) : null;
+  // Set when the customer used "use my current location" — a plain typed
+  // address with no coordinates gets a best-effort forward-geocode below
+  // instead, so distance-from-store still works on the delivery dashboard.
+  // Number(null) is 0 (finite!), so null/undefined must be checked for
+  // explicitly — coercing first would silently turn "no location" into
+  // "exactly at 0,0" (same mistake addressController.js avoids).
+  let lat = deliveryLat === null || deliveryLat === undefined ? null : Number(deliveryLat);
+  let lng = deliveryLng === null || deliveryLng === undefined ? null : Number(deliveryLng);
+  if ((lat !== null && !Number.isFinite(lat)) || (lng !== null && !Number.isFinite(lng))) {
+    lat = null;
+    lng = null;
+  }
   // Required for delivery (especially the Porter-rate zone, where staff must call to
   // confirm the fee) — optional for pickup, since existing accounts predate this field.
   const phone = clip(customerPhone, 20);
   if (isDelivery && !phone) throw badRequest("A phone number is required for delivery orders");
+
+  // Done outside the transaction — it's a network call, not a DB operation,
+  // and a slow/failed lookup (capped at 4s, swallowed on error) must never
+  // hold a DB transaction open or block the order itself.
+  if (isDelivery && lat === null && lng === null && address) {
+    const geo = await geocode.forwardGeocode(address);
+    if (geo) {
+      lat = geo.lat;
+      lng = geo.lng;
+    }
+  }
 
   const order = await withTransaction(async (db) => {
     const { lines, itemsTotal } = await priceItems(items, db);
@@ -299,6 +319,14 @@ exports.updateOrderStatus = asyncHandler(async (req, res) => {
 
 exports.cancelOrder = asyncHandler(async (req, res) => {
   res.json({ order: await cancelWithRestock(req.params.id, req.user) });
+});
+
+exports.updateOrderPriority = asyncHandler(async (req, res) => {
+  const { priority } = req.body;
+  if (typeof priority !== "boolean") return res.status(400).json({ error: "priority must be a boolean" });
+  const order = await orders.updatePriority(req.params.id, priority);
+  if (!order) return res.status(404).json({ error: "Order not found" });
+  res.json({ order });
 });
 
 exports.updateOrderPickupTime = asyncHandler(async (req, res) => {

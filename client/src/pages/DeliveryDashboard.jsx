@@ -8,10 +8,13 @@ const POLL_MS = 20000;
 const itemsLabel = (items) => (items || []).map((i) => (i.qty > 1 ? `${i.name} x${i.qty}` : i.name)).join(", ");
 
 function OrderCard({ order, action }) {
+  const nearbyCount = order.nearbyOrderIds?.length || 0;
   return (
-    <div className="dd-card">
+    <div className={`dd-card${order.priority ? " dd-card-priority" : ""}`}>
       <div className="dd-card-head">
-        <span className="dd-card-id">Order #{order.id}</span>
+        <span className="dd-card-id">
+          {order.priority && <i className="ti ti-flame" aria-hidden="true" title="Priority" />} Order #{order.id}
+        </span>
         {order.distanceFromStoreKm != null ? (
           <span className="dd-distance">{order.distanceFromStoreKm} km from shop</span>
         ) : (
@@ -21,6 +24,11 @@ function OrderCard({ order, action }) {
       <p className="dd-name">{order.customerName}</p>
       <p className="dd-address">{order.deliveryAddress}</p>
       <p className="dd-items">{itemsLabel(order.items)}</p>
+      {nearbyCount > 0 && (
+        <p className="dd-nearby">
+          <i className="ti ti-map-pins" aria-hidden="true" /> {nearbyCount} other order{nearbyCount > 1 ? "s" : ""} within 1km — worth picking up together
+        </p>
+      )}
       <div className="dd-meta">
         <a className="dd-tel" href={`tel:${(order.customerPhone || "").replace(/[^\d+]/g, "")}`}>
           <i className="ti ti-phone" aria-hidden="true" /> {order.customerPhone || "No phone on file"}
@@ -196,8 +204,11 @@ export default function DeliveryDashboard() {
 
         .dd-list { display: flex; flex-direction: column; gap: 12px; }
         .dd-card { background: var(--a-panel); border: 1px solid var(--a-border); border-radius: var(--a-radius, 12px); padding: 14px 16px; }
+        .dd-card-priority { border: 2px solid #c94f1a; padding: 13px 15px; }
         .dd-card-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px; }
-        .dd-card-id { font-weight: 700; font-size: 13px; color: var(--a-text-secondary); }
+        .dd-card-id { font-weight: 700; font-size: 13px; color: var(--a-text-secondary); display: flex; align-items: center; gap: 4px; }
+        .dd-card-id i { color: #c94f1a; }
+        .dd-nearby { margin: 0 0 10px; font-size: 12.5px; font-weight: 600; color: var(--a-green); display: flex; align-items: center; gap: 5px; }
         .dd-distance { font-size: 12px; font-weight: 700; color: var(--a-green); background: var(--a-green-soft); padding: 2px 8px; border-radius: 999px; }
         .dd-distance.muted { color: var(--a-text-muted); background: var(--a-panel-sunk); }
         .dd-name { margin: 6px 0 2px; font-weight: 700; font-size: 15px; }

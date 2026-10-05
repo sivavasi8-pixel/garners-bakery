@@ -57,7 +57,10 @@ const MIGRATIONS = [
   // atomic "only if still unclaimed" update (see data/orders.js claim()), so two
   // agents racing for the same order can't both win it.
   "alter table orders add column if not exists delivery_agent_id integer references users(id)",
-  "alter table orders add column if not exists claimed_at timestamptz"
+  "alter table orders add column if not exists claimed_at timestamptz",
+  // Owner/staff can flag a delivery as urgent — the delivery dashboard sorts
+  // priority orders to the top, ahead of plain distance-from-store ordering.
+  "alter table orders add column if not exists priority boolean not null default false"
 ];
 
 async function migrate() {

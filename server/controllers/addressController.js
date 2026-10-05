@@ -1,4 +1,5 @@
 const addresses = require("../data/addresses");
+const geocode = require("../services/geocode");
 const asyncHandler = require("../middleware/asyncHandler");
 
 const badRequest = (message) => Object.assign(new Error(message), { status: 400 });
@@ -11,10 +12,20 @@ exports.listMyAddresses = asyncHandler(async (req, res) => {
 exports.createAddress = asyncHandler(async (req, res) => {
   const address = clip(req.body.address, 500);
   if (!address) throw badRequest("An address is required");
-  const lat = req.body.lat === undefined || req.body.lat === null ? null : Number(req.body.lat);
-  const lng = req.body.lng === undefined || req.body.lng === null ? null : Number(req.body.lng);
+  let lat = req.body.lat === undefined || req.body.lat === null ? null : Number(req.body.lat);
+  let lng = req.body.lng === undefined || req.body.lng === null ? null : Number(req.body.lng);
   if ((lat !== null && !Number.isFinite(lat)) || (lng !== null && !Number.isFinite(lng))) {
     throw badRequest("lat/lng must be numbers");
+  }
+  // No coordinates given (typed by hand, not "use my current location") — best
+  // effort forward-geocode so distance-from-store still works for this address
+  // later. A failed/slow lookup just leaves it coordinate-less, same as before.
+  if (lat === null && lng === null) {
+    const geo = await geocode.forwardGeocode(address);
+    if (geo) {
+      lat = geo.lat;
+      lng = geo.lng;
+    }
   }
   const created = await addresses.create({
     userId: req.user.id,
@@ -52,6 +63,14 @@ exports.updateAddress = asyncHandler(async (req, res) => {
   if (req.body.phone !== undefined) fields.phone = clip(req.body.phone, 20) || null;
   if (req.body.lat !== undefined) fields.lat = req.body.lat === null ? null : Number(req.body.lat);
   if (req.body.lng !== undefined) fields.lng = req.body.lng === null ? null : Number(req.body.lng);
+  // The address text changed but no new coordinates came with it — the old
+  // lat/lng would now point at the wrong place, so re-geocode rather than
+  // leave a stale pin attached to the new text.
+  if (fields.address !== undefined && req.body.lat === undefined && req.body.lng === undefined) {
+    const geo = await geocode.forwardGeocode(fields.address);
+    fields.lat = geo ? geo.lat : null;
+    fields.lng = geo ? geo.lng : null;
+  }
   const updated = await addresses.update(req.params.id, req.user.id, fields);
   res.json({ address: updated });
 });
@@ -76,16 +95,5 @@ exports.reverseGeocode = asyncHandler(async (req, res) => {
   const lat = Number(req.body.lat);
   const lng = Number(req.body.lng);
   if (!Number.isFinite(lat) || !Number.isFinite(lng)) throw badRequest("lat and lng are required numbers");
-
-  const url = `https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat=${lat}&lon=${lng}`;
-  let data;
-  try {
-    const resp = await fetch(url, { headers: { "User-Agent": "GarnersBakery/1.0 (contact: owner@garners.test)" } });
-    data = await resp.json();
-  } catch (e) {
-    // The address book still works with a manually-typed address if the
-    // geocoding lookup itself fails (network hiccup, rate limit, etc).
-    return res.json({ address: null, lat, lng });
-  }
-  res.json({ address: data && data.display_name ? data.display_name : null, lat, lng });
+  res.json({ address: await geocode.reverseGeocode(lat, lng), lat, lng });
 });

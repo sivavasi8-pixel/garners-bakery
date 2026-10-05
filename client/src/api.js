@@ -59,6 +59,8 @@ export const api = {
     request(`/orders/${id}/payment`, { method: "PATCH", body: JSON.stringify({ paymentStatus }) }),
   updateOrderPickupTime: (id, pickupTime) =>
     request(`/orders/${id}/pickup-time`, { method: "PATCH", body: JSON.stringify({ pickupTime }) }),
+  updateOrderPriority: (id, priority) =>
+    request(`/orders/${id}/priority`, { method: "PATCH", body: JSON.stringify({ priority }) }),
   cancelOrder: (id) => request(`/orders/${id}/cancel`, { method: "PATCH" }),
 
   getInventory: () => request("/inventory"),

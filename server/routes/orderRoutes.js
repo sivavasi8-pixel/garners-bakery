@@ -20,6 +20,7 @@ router.get("/:id", requireAuth, orderController.getOrder);
 router.patch("/:id/status", requireAuth, requireRole("owner", "staff"), orderController.updateOrderStatus);
 router.patch("/:id/payment", requireAuth, requireRole("owner", "staff"), orderController.updateOrderPayment);
 router.patch("/:id/pickup-time", requireAuth, requireRole("owner", "staff"), orderController.updateOrderPickupTime);
+router.patch("/:id/priority", requireAuth, requireRole("owner", "staff"), orderController.updateOrderPriority);
 
 // Any logged-in role — the controller enforces a customer can only cancel their own,
 // and only while it's still "placed" (owner/staff can cancel up until delivered).

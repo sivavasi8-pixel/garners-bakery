@@ -26,6 +26,7 @@ const mapRow = (row) =>
     deliveryLng: row.delivery_lng === null || row.delivery_lng === undefined ? null : Number(row.delivery_lng),
     deliveryAgentId: row.delivery_agent_id ?? null,
     claimedAt: row.claimed_at ?? null,
+    priority: row.priority ?? false,
     customerPhone: row.customer_phone,
     // pg returns a `date` as a Date at local midnight; send it back as plain YYYY-MM-DD.
     pickupDate: row.pickup_date ? toYmd(row.pickup_date) : null,
@@ -142,6 +143,13 @@ module.exports = {
   updatePaymentStatus: async (id, paymentStatus) => {
     const { rows } = await pool.query("update orders set payment_status = $1 where id = $2 returning *", [
       paymentStatus,
+      Number(id)
+    ]);
+    return mapRow(rows[0]);
+  },
+  updatePriority: async (id, priority) => {
+    const { rows } = await pool.query("update orders set priority = $1 where id = $2 returning *", [
+      Boolean(priority),
       Number(id)
     ]);
     return mapRow(rows[0]);

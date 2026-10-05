@@ -26,20 +26,47 @@ const deliveryView = (o) => ({
   total: o.total,
   pickupTime: o.pickupTime,
   status: o.status,
-  claimedAt: o.claimedAt
+  claimedAt: o.claimedAt,
+  priority: o.priority
 });
 
-const byDistanceThenId = (a, b) => {
+// Owner/staff-flagged urgent orders first, then closest to the shop, since
+// that's a reasonable free default within each priority tier.
+const byPriorityThenDistance = (a, b) => {
+  if (a.priority !== b.priority) return a.priority ? -1 : 1;
   if (a.distanceFromStoreKm == null && b.distanceFromStoreKm == null) return a.id - b.id;
   if (a.distanceFromStoreKm == null) return 1; // unknown distance sorts last
   if (b.distanceFromStoreKm == null) return -1;
   return a.distanceFromStoreKm - b.distanceFromStoreKm || a.id - b.id;
 };
 
-// Unclaimed, ready-for-delivery orders — closest to the shop first, since that's
-// a reasonable free default priority without a dedicated priority flag.
+// Straight-line distance between two orders' own drop points (not from the
+// shop) — a cheap way to flag "these two are close together" without real
+// route planning. Two orders with no coordinates are never considered nearby
+// to each other (nothing to measure).
+const NEARBY_KM = 1;
+const attachNearby = (list) => {
+  for (const o of list) {
+    if (o.deliveryLat == null || o.deliveryLng == null) {
+      o.nearbyOrderIds = [];
+      continue;
+    }
+    o.nearbyOrderIds = list
+      .filter(
+        (other) =>
+          other.id !== o.id &&
+          other.deliveryLat != null &&
+          other.deliveryLng != null &&
+          haversineKm(o.deliveryLat, o.deliveryLng, other.deliveryLat, other.deliveryLng) <= NEARBY_KM
+      )
+      .map((other) => other.id);
+  }
+  return list;
+};
+
+// Unclaimed, ready-for-delivery orders.
 exports.listAvailable = asyncHandler(async (req, res) => {
-  const list = (await orders.getAvailableForDelivery()).map(deliveryView).sort(byDistanceThenId);
+  const list = attachNearby((await orders.getAvailableForDelivery()).map(deliveryView)).sort(byPriorityThenDistance);
   res.json({ orders: list });
 });
 

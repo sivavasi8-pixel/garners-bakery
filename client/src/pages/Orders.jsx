@@ -35,7 +35,7 @@ const CHANNEL_FILTERS = [
   { id: "delivery", label: "Delivery" }
 ];
 
-function OrderCard({ o, busy, onAdvance, onPaid, onCancel }) {
+function OrderCard({ o, busy, onAdvance, onPaid, onCancel, onTogglePriority }) {
   const [confirming, setConfirming] = useState(false);
   const next = nextStep(o);
   const notes = o.items.filter((it) => it.note).map((it) => it.note);
@@ -43,7 +43,10 @@ function OrderCard({ o, busy, onAdvance, onPaid, onCancel }) {
   return (
     <article className={`board-card${o.status === "cancelled" ? " cancelled" : ""}`}>
       <div className="board-card-head">
-        <span className="board-card-title">#{o.id} · {o.customerName}</span>
+        <span className="board-card-title">
+          {o.priority && <i className="ti ti-flame" title="Priority" style={{ color: "#c94f1a", marginRight: 4 }} aria-hidden="true" />}
+          #{o.id} · {o.customerName}
+        </span>
         <span className="board-card-when">{o.pickupTime || "—"}</span>
       </div>
       <p className="board-card-items">{itemsLabel(o.items)}</p>
@@ -74,6 +77,11 @@ function OrderCard({ o, busy, onAdvance, onPaid, onCancel }) {
       <div className="board-card-foot">
         <span className="board-card-total">{money(o.total)}</span>
         <div className="board-card-actions">
+          {!finished && o.deliveryType === "delivery" && (
+            <button type="button" className="a-btn quiet" disabled={busy} onClick={() => onTogglePriority(!o.priority)}>
+              {o.priority ? "Unmark urgent" : "Mark urgent"}
+            </button>
+          )}
           {!finished && o.paymentStatus !== "paid" && (
             <button type="button" className="a-btn quiet" disabled={busy} onClick={onPaid}>Mark paid</button>
           )}
@@ -169,7 +177,8 @@ export default function AdminOrders() {
     busy: busyId === o.id,
     onAdvance: (status) => runAction(o.id, () => api.updateOrderStatus(o.id, status)),
     onPaid: () => runAction(o.id, () => api.updateOrderPayment(o.id, "paid")),
-    onCancel: () => runAction(o.id, () => api.cancelOrder(o.id))
+    onCancel: () => runAction(o.id, () => api.cancelOrder(o.id)),
+    onTogglePriority: (priority) => runAction(o.id, () => api.updateOrderPriority(o.id, priority))
   });
 
   return (
@@ -246,7 +255,10 @@ export default function AdminOrders() {
               {listed.map((o) => (
                 <tr key={o.id}>
                   <td>
-                    <b>#{o.id}</b><br />
+                    <b>
+                      {o.priority && <i className="ti ti-flame" title="Priority" style={{ color: "#c94f1a", marginRight: 4 }} aria-hidden="true" />}
+                      #{o.id}
+                    </b><br />
                     {o.customerName}
                     {o.customerPhone && <><br /><a href={`tel:${o.customerPhone.replace(/[^\d+]/g, "")}`} className="board-tel">{o.customerPhone}</a></>}
                     <br /><Link to={`/receipt/${o.id}`} className="admin-receipt-link">Receipt</Link>

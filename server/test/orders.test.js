@@ -94,6 +94,10 @@ stub("data/staff.js", {
   updateStatus: async (id, status) => Object.assign(db.staff.find((s) => s.id === Number(id)), { status })
 });
 stub("data/users.js", { findById: async (id) => db.users.find((u) => u.id === Number(id)) });
+// Real forward/reverse geocoding hits Nominatim over the network — stubbed out
+// so a delivery order with a typed (non-GPS) address doesn't make a live HTTP
+// call on every test run, same "no Postgres, no network" rule as the rest of this file.
+stub("services/geocode.js", { forwardGeocode: async () => null, reverseGeocode: async () => null });
 // A transaction that really rolls back: snapshot the fake DB, restore it on error.
 stub("config/transaction.js", {
   withTransaction: async (fn) => {
