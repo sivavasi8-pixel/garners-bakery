@@ -99,5 +99,12 @@ export const api = {
     request(`/customers/${id}/reset-password`, { method: "POST", body: JSON.stringify({ newPassword }) }),
 
   registerPushToken: (token) => request("/push/register", { method: "POST", body: JSON.stringify({ token }) }),
-  unregisterPushToken: (token) => request("/push/unregister", { method: "POST", body: JSON.stringify({ token }) })
+  unregisterPushToken: (token) => request("/push/unregister", { method: "POST", body: JSON.stringify({ token }) }),
+
+  getAddresses: () => request("/addresses"),
+  createAddress: (address) => request("/addresses", { method: "POST", body: JSON.stringify(address) }),
+  updateAddress: (id, fields) => request(`/addresses/${id}`, { method: "PATCH", body: JSON.stringify(fields) }),
+  deleteAddress: (id) => request(`/addresses/${id}`, { method: "DELETE" }),
+  setDefaultAddress: (id) => request(`/addresses/${id}/default`, { method: "PATCH" }),
+  reverseGeocode: (lat, lng) => request("/addresses/reverse-geocode", { method: "POST", body: JSON.stringify({ lat, lng }) })
 };

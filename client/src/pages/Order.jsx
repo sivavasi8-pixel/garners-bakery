@@ -3,6 +3,7 @@ import { Link, useLocation } from "react-router-dom";
 import { api } from "../api";
 import { useAuth } from "../auth/AuthContext";
 import { useCart } from "../cart/CartContext";
+import AddressPicker from "../components/AddressPicker";
 import { paymentLabel } from "../paymentLabel";
 import { ZONES, calculateFee } from "../deliveryZones";
 
@@ -226,6 +227,12 @@ export default function Order() {
   const [fulfillment, setFulfillment] = useState("pickup");
   const [deliveryZone, setDeliveryZone] = useState(ZONES[0].id);
   const [deliveryAddress, setDeliveryAddress] = useState("");
+  const [deliveryLat, setDeliveryLat] = useState(null);
+  const [deliveryLng, setDeliveryLng] = useState(null);
+  // Set only when the customer typed/located a brand-new address and left
+  // "Save this address for next time" checked — createOrder fires the save
+  // after the order itself succeeds, so a failed save never blocks checkout.
+  const [addressToSave, setAddressToSave] = useState(null);
   const [phone, setPhone] = useState("");
   const [pickupDate, setPickupDate] = useState(null);
   const [pickupSlot, setPickupSlot] = useState(null);
@@ -305,6 +312,14 @@ export default function Order() {
   }, [days, pickupDate, pickupSlot]);
   const selectedDay = days.find((d) => d.date === pickupDate);
 
+  const handleAddressChange = (sel) => {
+    setDeliveryAddress(sel.address);
+    setDeliveryLat(sel.lat);
+    setDeliveryLng(sel.lng);
+    if (sel.phone) setPhone((p) => sel.phone || p);
+    setAddressToSave(sel.willSave ? { label: sel.label, address: sel.address, phone: sel.phone, lat: sel.lat, lng: sel.lng } : null);
+  };
+
   const toggleFavorite = (id) => {
     setFavorites((prev) => {
       const next = new Set(prev);
@@ -363,13 +378,22 @@ export default function Order() {
         paymentMethod,
         deliveryType: fulfillment,
         deliveryZone: fulfillment === "delivery" ? deliveryZone : undefined,
-        deliveryAddress: fulfillment === "delivery" ? deliveryAddress : undefined
+        deliveryAddress: fulfillment === "delivery" ? deliveryAddress : undefined,
+        deliveryLat: fulfillment === "delivery" ? deliveryLat : undefined,
+        deliveryLng: fulfillment === "delivery" ? deliveryLng : undefined
       });
       setPlacedOrder(order.order);
       setActiveOrder(order.order);
       clearCart();
       setPickupSlot(null);
       setDeliveryAddress("");
+      setDeliveryLat(null);
+      setDeliveryLng(null);
+      // Best-effort: a failed save shouldn't undo an order that already succeeded.
+      if (fulfillment === "delivery" && addressToSave) {
+        api.createAddress(addressToSave).catch(() => {});
+        setAddressToSave(null);
+      }
     } catch (err) {
       setCheckoutError(err.message);
     } finally {
@@ -659,18 +683,10 @@ export default function Order() {
                             {deliveryFeePending && (
                               <p className="delivery-note">This is beyond our standard area — we'll call to confirm the Porter charge before baking starts.</p>
                             )}
-                            <label className="field">
+                            <div className="field">
                               <span className="field-label">Delivery address</span>
-                              <textarea
-                                id="delivery-address"
-                                value={deliveryAddress}
-                                onChange={(e) => setDeliveryAddress(e.target.value)}
-                                className="field-input field-textarea"
-                                rows={2}
-                                autoComplete="street-address"
-                                placeholder="House / flat, street, landmark"
-                              />
-                            </label>
+                              <AddressPicker onChange={handleAddressChange} fallbackPhone={phone} />
+                            </div>
                           </>
                         )}
 
@@ -783,16 +799,16 @@ export default function Order() {
 
                   {canOrder && cart.length > 0 && (
                     <>
-                      {missing.length > 0 && !isClosedToday && (
+                      {missing.length > 0 && (
                         <p className="missing-note">To place your order, add {missing.join(", ")}.</p>
                       )}
                       <button
                         type="button"
                         onClick={handleCheckout}
-                        disabled={placing || isClosedToday || belowMinOrder || missing.length > 0}
+                        disabled={placing || belowMinOrder || missing.length > 0}
                         className="btn-checkout"
                       >
-                        {placing ? "Placing order…" : isClosedToday ? "Ordering reopens tomorrow" : `Place order · ₹${grandTotal.toLocaleString("en-IN")}`}
+                        {placing ? "Placing order…" : `Place order · ₹${grandTotal.toLocaleString("en-IN")}`}
                       </button>
                     </>
                   )}

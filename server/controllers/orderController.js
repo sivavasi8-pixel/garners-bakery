@@ -125,7 +125,7 @@ exports.getOrder = asyncHandler(async (req, res) => {
 });
 
 exports.createOrder = asyncHandler(async (req, res) => {
-  const { items, pickupTime, pickupDate, pickupSlot, channel, paymentMethod, deliveryType, deliveryZone, deliveryAddress, customerPhone } = req.body;
+  const { items, pickupTime, pickupDate, pickupSlot, channel, paymentMethod, deliveryType, deliveryZone, deliveryAddress, deliveryLat, deliveryLng, customerPhone } = req.body;
   const validPayment = ["cash", "upi", "card"];
   if (paymentMethod && !validPayment.includes(paymentMethod)) {
     return res.status(400).json({ error: `paymentMethod must be one of ${validPayment.join(", ")}` });
@@ -136,14 +136,12 @@ exports.createOrder = asyncHandler(async (req, res) => {
   // customer account for someone paying at the counter.
   const isCustomer = req.user.role === "customer";
 
-  // Closed Mondays only block the public online storefront — staff/owner can
-  // still log a walk-in or a phone order from the in-store POS.
-  if (isCustomer && isClosedToday()) {
-    return res.status(400).json({ error: "We're closed today (Monday). Online ordering reopens tomorrow." });
-  }
-
   const isDelivery = deliveryType === "delivery";
   const address = clip(deliveryAddress, 500);
+  // Set only when the customer used "use my current location" — a plain typed
+  // address (most orders) has no coordinates, and that's fine.
+  const lat = Number.isFinite(Number(deliveryLat)) ? Number(deliveryLat) : null;
+  const lng = Number.isFinite(Number(deliveryLng)) ? Number(deliveryLng) : null;
   // Required for delivery (especially the Porter-rate zone, where staff must call to
   // confirm the fee) — optional for pickup, since existing accounts predate this field.
   const phone = clip(customerPhone, 20);
@@ -196,6 +194,8 @@ exports.createOrder = asyncHandler(async (req, res) => {
         deliveryZone: isDelivery ? deliveryZone : null,
         deliveryAddress: isDelivery ? address : null,
         deliveryFee: isDelivery ? deliveryFee : null,
+        deliveryLat: isDelivery ? lat : null,
+        deliveryLng: isDelivery ? lng : null,
         customerPhone: phone || null
       },
       db

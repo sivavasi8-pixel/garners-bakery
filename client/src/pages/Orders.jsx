@@ -64,6 +64,11 @@ function OrderCard({ o, busy, onAdvance, onPaid, onCancel }) {
         <p className="board-card-contact">
           {o.customerPhone && <a href={`tel:${o.customerPhone.replace(/[^\d+]/g, "")}`} className="board-tel">{o.customerPhone}</a>}
           {o.deliveryType === "delivery" && o.deliveryAddress && <span>{o.deliveryAddress} · {deliveryFeeLabel(o)}</span>}
+          {o.deliveryLat != null && o.deliveryLng != null && (
+            <a href={`https://www.google.com/maps?q=${o.deliveryLat},${o.deliveryLng}`} target="_blank" rel="noopener noreferrer" className="board-tel">
+              <i className="ti ti-map-pin" aria-hidden="true" /> Map
+            </a>
+          )}
         </p>
       )}
       <div className="board-card-foot">
@@ -272,7 +277,18 @@ export default function AdminOrders() {
                       </span>
                     )}
                     {o.deliveryType === "delivery" && (
-                      <div className="muted" style={{ overflowWrap: "anywhere" }}>{zoneLabel(o.deliveryZone)} · {deliveryFeeLabel(o)}<br />{o.deliveryAddress}</div>
+                      <div className="muted" style={{ overflowWrap: "anywhere" }}>
+                        {zoneLabel(o.deliveryZone)} · {deliveryFeeLabel(o)}<br />
+                        {o.deliveryAddress}
+                        {o.deliveryLat != null && o.deliveryLng != null && (
+                          <>
+                            {" · "}
+                            <a href={`https://www.google.com/maps?q=${o.deliveryLat},${o.deliveryLng}`} target="_blank" rel="noopener noreferrer">
+                              Map
+                            </a>
+                          </>
+                        )}
+                      </div>
                     )}
                   </td>
                   <td>

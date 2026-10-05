@@ -25,7 +25,29 @@ const MIGRATIONS = [
      token text not null unique,
      created_at timestamptz not null default now()
    )`,
-  "create index if not exists idx_push_tokens_user_id on push_tokens(user_id)"
+  "create index if not exists idx_push_tokens_user_id on push_tokens(user_id)",
+  // A customer's saved delivery addresses — like any ecommerce checkout's address
+  // book. One is marked default (addressController enforces only one per user);
+  // lat/lng are set when the address came from "use my current location" rather
+  // than typed by hand.
+  `create table if not exists customer_addresses (
+     id serial primary key,
+     user_id integer not null references users(id) on delete cascade,
+     label text not null default 'Home',
+     address text not null,
+     phone text,
+     lat numeric,
+     lng numeric,
+     is_default boolean not null default false,
+     created_at timestamptz not null default now()
+   )`,
+  "create index if not exists idx_customer_addresses_user_id on customer_addresses(user_id)",
+  // The precise coordinates when a delivery order was placed with "use my
+  // current location" instead of (or in addition to) a saved address — lets
+  // staff open the exact drop point in Maps instead of relying on the typed
+  // address alone. Null for pickup orders and for addresses typed by hand.
+  "alter table orders add column if not exists delivery_lat numeric",
+  "alter table orders add column if not exists delivery_lng numeric"
 ];
 
 async function migrate() {

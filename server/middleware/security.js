@@ -8,7 +8,9 @@ function securityHeaders(req, res, next) {
     "X-Frame-Options": "DENY", // nobody can embed the app in an iframe to trick clicks
     "Referrer-Policy": "strict-origin-when-cross-origin",
     "Cross-Origin-Opener-Policy": "same-origin",
-    "Permissions-Policy": "camera=(), microphone=(), geolocation=(), payment=()"
+    // geolocation=(self): "use my current location" in the delivery address
+    // picker needs it; still denied to any iframe or cross-origin embed.
+    "Permissions-Policy": "camera=(), microphone=(), geolocation=(self), payment=()"
   });
   // Only meaningful over HTTPS (Render always is) — tells browsers to never use plain HTTP.
   if (req.secure) res.set("Strict-Transport-Security", "max-age=31536000; includeSubDomains");

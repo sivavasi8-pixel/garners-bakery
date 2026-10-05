@@ -22,6 +22,8 @@ const mapRow = (row) =>
     deliveryZone: row.delivery_zone,
     deliveryAddress: row.delivery_address,
     deliveryFee: row.delivery_fee === null ? null : Number(row.delivery_fee),
+    deliveryLat: row.delivery_lat === null || row.delivery_lat === undefined ? null : Number(row.delivery_lat),
+    deliveryLng: row.delivery_lng === null || row.delivery_lng === undefined ? null : Number(row.delivery_lng),
     customerPhone: row.customer_phone,
     // pg returns a `date` as a Date at local midnight; send it back as plain YYYY-MM-DD.
     pickupDate: row.pickup_date ? toYmd(row.pickup_date) : null,
@@ -95,15 +97,18 @@ module.exports = {
     deliveryZone,
     deliveryAddress,
     deliveryFee,
+    deliveryLat,
+    deliveryLng,
     customerPhone,
     pickupDate
   }, db = pool) => {
     const { rows } = await db.query(
       `insert into orders (
          customer_name, customer_id, items, total, pickup_time, channel, payment_method, payment_status,
-         delivery_type, delivery_zone, delivery_address, delivery_fee, customer_phone, pickup_date
+         delivery_type, delivery_zone, delivery_address, delivery_fee, delivery_lat, delivery_lng,
+         customer_phone, pickup_date
        )
-       values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14) returning *`,
+       values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16) returning *`,
       [
         customerName,
         customerId,
@@ -117,6 +122,8 @@ module.exports = {
         deliveryZone || null,
         deliveryAddress || null,
         deliveryFee === undefined ? null : deliveryFee,
+        deliveryLat === undefined ? null : deliveryLat,
+        deliveryLng === undefined ? null : deliveryLng,
         customerPhone || null,
         pickupDate || null
       ]
