@@ -89,7 +89,7 @@ const validateSlot = ({ date, slot, hasCustomCake, deliveryType }, now = Date.no
   // Delivery is only available 3:00 PM – 6:00 PM.
   if (deliveryType === "delivery") {
     const mins = slotMinutes(slot);
-    if (mins < 15 * 60 || mins >= 18 * 60) {
+    if (mins < 15 * 60 || mins > 18 * 60) {
       return { error: "Delivery is only available between 3:00 PM and 6:00 PM — please pick a time in that window" };
     }
   }

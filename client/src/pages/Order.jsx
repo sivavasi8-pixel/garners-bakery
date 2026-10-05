@@ -723,10 +723,9 @@ export default function Order() {
                               {(selectedDay?.slots || []).map((s) => {
                                 const [h, m] = s.value.split(":").map(Number);
                                 const mins = h * 60 + m;
-                                // Delivery window: 15:00–18:00 (3 PM slot starts at 15:00,
-                                // last delivery slot is 17:30 so it finishes by ~18:00).
+                                // Delivery window: 15:00–18:00 inclusive (3 PM to 6 PM).
                                 const outsideDeliveryWindow =
-                                  fulfillment === "delivery" && (mins < 15 * 60 || mins >= 18 * 60);
+                                  fulfillment === "delivery" && (mins < 15 * 60 || mins > 18 * 60);
                                 return (
                                   <button
                                     key={s.value}
