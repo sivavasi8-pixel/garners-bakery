@@ -79,6 +79,24 @@ module.exports = {
       "select * from users where role = 'customer' order by id asc"
     );
     return rows.map(mapRow);
+  },
+  // Delivery-partner logins — a new role, not a staff roster entry: no shift or
+  // clock-in/out to track, just an account that can claim and deliver orders.
+  createDeliveryAccount: async ({ name, email, passwordHash, phone }) => {
+    const { rows } = await pool.query(
+      `insert into users (name, email, password_hash, role, phone)
+       values ($1, $2, $3, 'delivery', $4) returning *`,
+      [name, email, passwordHash, phone || null]
+    );
+    return mapRow(rows[0]);
+  },
+  getAllDeliveryPartners: async () => {
+    const { rows } = await pool.query("select * from users where role = 'delivery' order by id asc");
+    return rows.map(mapRow);
+  },
+  remove: async (id) => {
+    const { rowCount } = await pool.query("delete from users where id = $1", [Number(id)]);
+    return rowCount > 0;
   }
 };
 

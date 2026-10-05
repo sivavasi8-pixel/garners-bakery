@@ -47,7 +47,17 @@ const MIGRATIONS = [
   // staff open the exact drop point in Maps instead of relying on the typed
   // address alone. Null for pickup orders and for addresses typed by hand.
   "alter table orders add column if not exists delivery_lat numeric",
-  "alter table orders add column if not exists delivery_lng numeric"
+  "alter table orders add column if not exists delivery_lng numeric",
+  // Delivery-partner accounts — a new login role alongside owner/staff/customer.
+  // Drop+recreate (not ALTER ... ADD VALUE, which doesn't exist for a plain CHECK
+  // constraint) is safe to repeat every boot since it's the same definition each time.
+  "alter table users drop constraint if exists users_role_check",
+  "alter table users add constraint users_role_check check (role in ('owner', 'staff', 'customer', 'delivery'))",
+  // Which delivery partner has claimed this order, and when — claiming is an
+  // atomic "only if still unclaimed" update (see data/orders.js claim()), so two
+  // agents racing for the same order can't both win it.
+  "alter table orders add column if not exists delivery_agent_id integer references users(id)",
+  "alter table orders add column if not exists claimed_at timestamptz"
 ];
 
 async function migrate() {

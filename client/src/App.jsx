@@ -21,6 +21,8 @@ import Receipt from "./pages/Receipt";
 import Orders from "./pages/Orders";
 import Poster from "./pages/Poster";
 import Customers from "./pages/Customers";
+import DeliveryPartners from "./pages/DeliveryPartners";
+import DeliveryDashboard from "./pages/DeliveryDashboard";
 import NotFound from "./pages/NotFound";
 
 export default function App() {
@@ -86,9 +88,28 @@ export default function App() {
             </ProtectedRoute>
           }
         />
+        <Route
+          path="/delivery-partners"
+          element={
+            <ProtectedRoute roles={["owner"]}>
+              <DeliveryPartners />
+            </ProtectedRoute>
+          }
+        />
         {/* Owner and staff: whoever posts the morning banner in the WhatsApp group. */}
         <Route path="/poster" element={<Poster />} />
       </Route>
+
+      {/* Delivery partners: their own standalone shell, not the admin console or
+          the customer storefront — a single-page claim/deliver dashboard. */}
+      <Route
+        path="/delivery"
+        element={
+          <ProtectedRoute roles={["delivery"]}>
+            <DeliveryDashboard />
+          </ProtectedRoute>
+        }
+      />
 
       {/* Any logged-in role — the backend enforces a customer can only fetch their own
           order. Standalone (no shell chrome): it's a print-friendly receipt, and both

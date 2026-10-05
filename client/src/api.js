@@ -106,5 +106,15 @@ export const api = {
   updateAddress: (id, fields) => request(`/addresses/${id}`, { method: "PATCH", body: JSON.stringify(fields) }),
   deleteAddress: (id) => request(`/addresses/${id}`, { method: "DELETE" }),
   setDefaultAddress: (id) => request(`/addresses/${id}/default`, { method: "PATCH" }),
-  reverseGeocode: (lat, lng) => request("/addresses/reverse-geocode", { method: "POST", body: JSON.stringify({ lat, lng }) })
+  reverseGeocode: (lat, lng) => request("/addresses/reverse-geocode", { method: "POST", body: JSON.stringify({ lat, lng }) }),
+
+  getAvailableDeliveries: () => request("/delivery/orders/available"),
+  getMyDeliveries: () => request("/delivery/orders/mine"),
+  claimDelivery: (id) => request(`/delivery/orders/${id}/claim`, { method: "PATCH" }),
+  releaseDelivery: (id) => request(`/delivery/orders/${id}/release`, { method: "PATCH" }),
+  markDelivered: (id) => request(`/delivery/orders/${id}/delivered`, { method: "PATCH" }),
+
+  getDeliveryPartners: () => request("/delivery-partners"),
+  createDeliveryPartner: (partner) => request("/delivery-partners", { method: "POST", body: JSON.stringify(partner) }),
+  deleteDeliveryPartner: (id) => request(`/delivery-partners/${id}`, { method: "DELETE" })
 };

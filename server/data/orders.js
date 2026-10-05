@@ -24,6 +24,8 @@ const mapRow = (row) =>
     deliveryFee: row.delivery_fee === null ? null : Number(row.delivery_fee),
     deliveryLat: row.delivery_lat === null || row.delivery_lat === undefined ? null : Number(row.delivery_lat),
     deliveryLng: row.delivery_lng === null || row.delivery_lng === undefined ? null : Number(row.delivery_lng),
+    deliveryAgentId: row.delivery_agent_id ?? null,
+    claimedAt: row.claimed_at ?? null,
     customerPhone: row.customer_phone,
     // pg returns a `date` as a Date at local midnight; send it back as plain YYYY-MM-DD.
     pickupDate: row.pickup_date ? toYmd(row.pickup_date) : null,
@@ -149,6 +151,53 @@ module.exports = {
       pickupTime,
       Number(id)
     ]);
+    return mapRow(rows[0]);
+  },
+  // Unclaimed, ready-to-go delivery orders — what a delivery partner's "Available"
+  // list shows. Cancelled/delivered orders never have status 'ready' again, so
+  // no extra filter is needed for those.
+  getAvailableForDelivery: async () => {
+    const { rows } = await pool.query(
+      "select * from orders where delivery_type = 'delivery' and status = 'ready' and delivery_agent_id is null order by id asc"
+    );
+    return rows.map(mapRow);
+  },
+  getClaimedByAgent: async (agentId) => {
+    const { rows } = await pool.query(
+      "select * from orders where delivery_agent_id = $1 and status not in ('delivered', 'cancelled') order by claimed_at asc",
+      [Number(agentId)]
+    );
+    return rows.map(mapRow);
+  },
+  // Atomic "only if still unclaimed" update — the WHERE clause is what makes two
+  // agents racing for the same order safe: whichever request's UPDATE actually
+  // matches a row wins (returns it), the loser matches zero rows (returns undefined).
+  claim: async (id, agentId) => {
+    const { rows } = await pool.query(
+      `update orders set delivery_agent_id = $1, claimed_at = now()
+       where id = $2 and delivery_type = 'delivery' and status = 'ready' and delivery_agent_id is null
+       returning *`,
+      [Number(agentId), Number(id)]
+    );
+    return mapRow(rows[0]);
+  },
+  // Backing out of a pickup — only the agent who holds it can release it, and
+  // releasing just clears the claim so it's immediately available to everyone
+  // else again, same as if nobody had claimed it.
+  release: async (id, agentId) => {
+    const { rows } = await pool.query(
+      "update orders set delivery_agent_id = null, claimed_at = null where id = $1 and delivery_agent_id = $2 returning *",
+      [Number(id), Number(agentId)]
+    );
+    return mapRow(rows[0]);
+  },
+  // Marking delivered, scoped to the agent who actually holds this order —
+  // separate from the admin updateOrderStatus path, which any owner/staff can use.
+  markDelivered: async (id, agentId) => {
+    const { rows } = await pool.query(
+      "update orders set status = 'delivered' where id = $1 and delivery_agent_id = $2 returning *",
+      [Number(id), Number(agentId)]
+    );
     return mapRow(rows[0]);
   }
 };
