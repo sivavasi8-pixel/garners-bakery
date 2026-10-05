@@ -97,7 +97,8 @@ export default function Customers() {
       {customers.length === 0 ? (
         <p style={{ color: "var(--a-text-secondary)", fontSize: "13px" }}>No customer accounts yet.</p>
       ) : (
-        <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "13px" }}>
+        <div style={{ overflowX: "auto" }}>
+        <table style={{ width: "100%", minWidth: 640, borderCollapse: "collapse", fontSize: "13px" }}>
           <thead>
             <tr style={{ textAlign: "left", borderBottom: "1px solid var(--a-border)" }}>
               <th style={{ padding: "8px 10px", fontWeight: 600 }}>Name</th>
@@ -229,6 +230,7 @@ export default function Customers() {
             })}
           </tbody>
         </table>
+        </div>
       )}
     </div>
   );
