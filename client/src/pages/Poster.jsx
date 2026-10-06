@@ -150,8 +150,8 @@ function drawCategoryBox(ctx, x, y, w, group, img) {
     drawImageCover(ctx, img, x + BOX_PAD_X, imgY, w - BOX_PAD_X * 2, IMG_BANNER_H, 10);
   }
 
-  // Category pill — sits astride the box's top border, tilted a few degrees
-  // like a hand-torn label, the one deliberately un-tidy touch in the layout.
+  // Category pill — sits astride the box's top border, drawn level (no tilt —
+  // an earlier slant read as crooked rather than intentional).
   ctx.font = "700 22px Inter, sans-serif";
   const label = group.label.toUpperCase();
   const labelW = ctx.measureText(label).width;
@@ -159,17 +159,13 @@ function drawCategoryBox(ctx, x, y, w, group, img) {
   const pillH = 38;
   const pillCx = x + 18 + pillW / 2;
   const pillCy = y;
-  ctx.save();
-  ctx.translate(pillCx, pillCy);
-  ctx.rotate(-0.025);
   ctx.fillStyle = GREEN;
-  roundRectPath(ctx, -pillW / 2, -pillH / 2, pillW, pillH, pillH / 2);
+  roundRectPath(ctx, pillCx - pillW / 2, pillCy - pillH / 2, pillW, pillH, pillH / 2);
   ctx.fill();
   ctx.fillStyle = CREAM;
   ctx.textAlign = "center";
   ctx.textBaseline = "middle";
-  ctx.fillText(label, 1, 1);
-  ctx.restore();
+  ctx.fillText(label, pillCx + 1, pillCy + 1);
   ctx.textAlign = "left";
   ctx.textBaseline = "alphabetic";
 
@@ -288,22 +284,20 @@ function drawPoster(canvas, { groups, images, dateLabel, orderUrl, qr }) {
   ctx.lineTo(POSTER_W / 2 + tagW / 2 + 46, 106);
   ctx.stroke();
 
-  ctx.save();
-  ctx.translate(POSTER_W / 2, 178);
-  ctx.rotate(-0.02);
   ctx.font = "700 46px Fraunces, Georgia, serif";
   const bannerText = "Today's Bakes";
   const bannerTextW = ctx.measureText(bannerText).width;
   const bannerW = bannerTextW + 90;
   const bannerH = 62;
+  const bannerCx = POSTER_W / 2;
+  const bannerCy = 178;
   ctx.fillStyle = GREEN;
-  roundRectPath(ctx, -bannerW / 2, -bannerH / 2, bannerW, bannerH, bannerH / 2);
+  roundRectPath(ctx, bannerCx - bannerW / 2, bannerCy - bannerH / 2, bannerW, bannerH, bannerH / 2);
   ctx.fill();
   ctx.fillStyle = CREAM;
   ctx.textAlign = "center";
   ctx.textBaseline = "middle";
-  ctx.fillText(bannerText, 0, 3);
-  ctx.restore();
+  ctx.fillText(bannerText, bannerCx, bannerCy + 3);
 
   ctx.textAlign = "center";
   ctx.textBaseline = "alphabetic";
