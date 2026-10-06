@@ -109,12 +109,16 @@ const ROW_H = 34;
 const BOX_PAD_X = 20;
 const BOX_PAD_TOP = 40; // room for the pill badge overlapping the top border
 const BOX_PAD_BOTTOM = 18;
-const IMG_W_RATIO = 0.36;
-const IMG_GAP = 14;
+// A real uploaded photo gets genuine hero treatment — a wide banner across the
+// top of its category's box — rather than a small thumbnail squeezed beside
+// the list, which made a real product photo look like an afterthought.
+const IMG_BANNER_H = 190;
+const IMG_GAP_BOTTOM = 18;
 
 // Height a category box will need, before it's actually drawn — used both to
 // balance items across the two columns and to size the canvas up front.
-const boxHeight = (group) => BOX_PAD_TOP + group.items.length * ROW_H + BOX_PAD_BOTTOM;
+const boxHeight = (group, hasImg) =>
+  BOX_PAD_TOP + (hasImg ? IMG_BANNER_H + IMG_GAP_BOTTOM : 0) + group.items.length * ROW_H + BOX_PAD_BOTTOM;
 
 const fitText = (ctx, text, maxW) => {
   for (const size of [22, 20, 18]) {
@@ -127,10 +131,9 @@ const fitText = (ctx, text, maxW) => {
 };
 
 function drawCategoryBox(ctx, x, y, w, group, img) {
-  const h = boxHeight(group);
   const hasImg = !!img;
-  const imgW = hasImg ? Math.round(w * IMG_W_RATIO) : 0;
-  const textW = hasImg ? w - imgW - IMG_GAP - BOX_PAD_X * 2 : w - BOX_PAD_X * 2;
+  const h = boxHeight(group, hasImg);
+  const textW = w - BOX_PAD_X * 2;
 
   // Box border — a plain rounded rectangle rather than a filled card, so
   // several sitting side by side still read as one warm sheet of paper.
@@ -139,8 +142,12 @@ function drawCategoryBox(ctx, x, y, w, group, img) {
   roundRectPath(ctx, x, y, w, h, 14);
   ctx.stroke();
 
+  // A real product photo as a wide hero banner across the top of its box —
+  // the same visual weight a photo gets on the hand-designed posters — rather
+  // than a small thumbnail that made it look incidental.
   if (hasImg) {
-    drawImageCover(ctx, img, x + w - BOX_PAD_X - imgW, y + BOX_PAD_TOP - 6, imgW, h - BOX_PAD_TOP - BOX_PAD_BOTTOM + 6, 10);
+    const imgY = y + BOX_PAD_TOP - 6;
+    drawImageCover(ctx, img, x + BOX_PAD_X, imgY, w - BOX_PAD_X * 2, IMG_BANNER_H, 10);
   }
 
   // Category pill — sits astride the box's top border, tilted a few degrees
@@ -166,11 +173,10 @@ function drawCategoryBox(ctx, x, y, w, group, img) {
   ctx.textAlign = "left";
   ctx.textBaseline = "alphabetic";
 
-  // Item rows — name, a dotted leader, then the price, confined to textW so
-  // a photo on the right never gets text drawn over it. The name's max width
-  // is capped to what's left after the price, so a long item name is scaled
-  // down (fillText's built-in behavior) rather than overlapping the price.
-  let rowY = y + BOX_PAD_TOP + 22;
+  // Item rows — name, a dotted leader, then the price, starting below the hero
+  // photo (if any). The name's max width is capped to what's left after the
+  // price, so a long item name steps down a size rather than overlapping it.
+  let rowY = y + BOX_PAD_TOP + (hasImg ? IMG_BANNER_H + IMG_GAP_BOTTOM : 0) + 22;
   for (const item of group.items) {
     const priceText = item.price ? `Rs ${item.price}` : "TBD";
     ctx.font = "700 22px Inter, sans-serif";
@@ -242,7 +248,7 @@ function drawPoster(canvas, { groups, images, dateLabel, orderUrl, qr }) {
   let leftH = 0;
   let rightH = 0;
   for (const g of groups) {
-    const h = boxHeight(g);
+    const h = boxHeight(g, !!images[g.label]);
     if (leftH <= rightH) {
       left.push(g);
       leftH += h + boxGap;
@@ -491,9 +497,16 @@ export default function Poster() {
     fileRef.current = null;
     if (!canvasRef.current || groups.length === 0) return;
     let cancelled = false;
-    // One representative photo per category (its first item that actually has
-    // one) — loaded before drawing so the canvas never has to redraw mid-paint.
-    const imageEntries = groups.map((g) => [g.label, g.items.find((i) => i.imageUrl)?.imageUrl || null]);
+    // One representative photo per category — now drawn as a real hero banner,
+    // so it's worth picking the best candidate rather than just the first item
+    // in list order: a special/popular item is more likely to have a photo the
+    // owner actually chose to showcase, not just whatever happened to be shot first.
+    const bestPhoto = (items) => {
+      const withPhoto = items.filter((i) => i.imageUrl);
+      const featured = withPhoto.find((i) => isSpecialItem(i) || i.isPopular);
+      return (featured || withPhoto[0])?.imageUrl || null;
+    };
+    const imageEntries = groups.map((g) => [g.label, bestPhoto(g.items)]);
     Promise.all([document.fonts.ready, ...imageEntries.map(([, url]) => loadImage(url))]).then(([, ...imgs]) => {
       if (cancelled || !canvasRef.current) return;
       const images = {};
