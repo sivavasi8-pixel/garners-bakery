@@ -16,7 +16,8 @@ const allNavItems = [
   { to: "/delivery-partners", label: "Delivery", icon: "ti-truck-delivery", ownerOnly: true },
   { to: "/menu-admin", label: "Menu", icon: "ti-tools-kitchen-2", ownerOnly: true },
   { to: "/poster", label: "Poster", icon: "ti-photo" },
-  { to: "/reports", label: "Reports", icon: "ti-chart-bar", ownerOnly: true }
+  { to: "/reports", label: "Reports", icon: "ti-chart-bar", ownerOnly: true },
+  { to: "/settings", label: "Settings", icon: "ti-settings", ownerOnly: true }
 ];
 
 export default function AdminLayout() {

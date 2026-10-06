@@ -125,6 +125,39 @@ exports.getOrder = asyncHandler(async (req, res) => {
   res.json({ order });
 });
 
+// A customer uploads proof of payment for their own order (a UPI/bank screenshot) —
+// owner/staff review it, from the admin Orders page, before marking the order paid.
+// Doesn't touch payment_status itself: "Mark paid" stays the one action that does.
+exports.uploadReceipt = asyncHandler(async (req, res) => {
+  if (!req.file) return res.status(400).json({ error: "A receipt image is required" });
+  const order = await orders.getById(req.params.id);
+  if (!order) return res.status(404).json({ error: "Order not found" });
+  if (req.user.role === "customer" && order.customerId !== req.user.id) {
+    return res.status(403).json({ error: "Not your order" });
+  }
+  if (order.paymentStatus === "paid") {
+    return res.status(400).json({ error: "This order is already marked paid" });
+  }
+  const updated = await orders.setReceipt(req.params.id, req.file.buffer, req.file.mimetype);
+  res.json({ order: updated });
+});
+
+// Serves the uploaded receipt image itself — same ETag/no-cache pattern as
+// menu photos (controllers/menuController.js), scoped to the order's own
+// customer or any owner/staff reviewing it.
+exports.getReceipt = asyncHandler(async (req, res) => {
+  const order = await orders.getById(req.params.id);
+  if (!order) return res.status(404).json({ error: "Order not found" });
+  if (req.user.role === "customer" && order.customerId !== req.user.id) {
+    return res.status(403).json({ error: "Not your order" });
+  }
+  const receipt = await orders.getReceiptImage(req.params.id);
+  if (!receipt) return res.status(404).end();
+  res.set("Content-Type", receipt.mime || "application/octet-stream");
+  res.set("Cache-Control", "no-cache");
+  res.send(receipt.data);
+});
+
 exports.createOrder = asyncHandler(async (req, res) => {
   const { items, pickupTime, pickupDate, pickupSlot, channel, paymentMethod, deliveryType, deliveryZone, deliveryAddress, deliveryLat, deliveryLng, customerPhone } = req.body;
   const validPayment = ["cash", "upi", "card"];

@@ -19,6 +19,7 @@ const pushRoutes = require("./routes/pushRoutes");
 const addressRoutes = require("./routes/addressRoutes");
 const deliveryRoutes = require("./routes/deliveryRoutes");
 const deliveryPartnersRoutes = require("./routes/deliveryPartnersRoutes");
+const settingsRoutes = require("./routes/settingsRoutes");
 
 const app = express();
 const PORT = process.env.PORT || 4000;
@@ -59,6 +60,7 @@ app.use("/api/push", pushRoutes);
 app.use("/api/addresses", addressRoutes);
 app.use("/api/delivery", deliveryRoutes);
 app.use("/api/delivery-partners", deliveryPartnersRoutes);
+app.use("/api/settings", settingsRoutes);
 
 // Serve the built React app (client/dist), if it exists — it only exists after
 // `npm run build` in client/, which is what the deploy build step runs. Local dev

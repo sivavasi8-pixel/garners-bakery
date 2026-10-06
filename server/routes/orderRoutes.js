@@ -1,7 +1,22 @@
 const express = require("express");
+const multer = require("multer");
 const router = express.Router();
 const orderController = require("../controllers/orderController");
 const { requireAuth, requireRole } = require("../middleware/auth");
+
+// Receipt photos live in Postgres (bytea), not on disk — memoryStorage keeps
+// the upload as a Buffer only. Same allowlist/size cap as menu photos
+// (routes/menuRoutes.js): real photo formats only, since these are served
+// back from our own domain.
+const ALLOWED_IMAGE_TYPES = ["image/jpeg", "image/png", "image/webp", "image/gif"];
+const upload = multer({
+  storage: multer.memoryStorage(),
+  limits: { fileSize: 5 * 1024 * 1024 },
+  fileFilter: (req, file, cb) => {
+    if (ALLOWED_IMAGE_TYPES.includes(file.mimetype)) return cb(null, true);
+    cb(Object.assign(new Error("Receipt must be a JPEG, PNG, WebP or GIF image"), { status: 400 }));
+  }
+});
 
 // Public — no login needed to see whether the bakery is open today, or the delivery
 // zone list, before a customer even starts browsing. Must come before "/:id".
@@ -21,6 +36,11 @@ router.patch("/:id/status", requireAuth, requireRole("owner", "staff"), orderCon
 router.patch("/:id/payment", requireAuth, requireRole("owner", "staff"), orderController.updateOrderPayment);
 router.patch("/:id/pickup-time", requireAuth, requireRole("owner", "staff"), orderController.updateOrderPickupTime);
 router.patch("/:id/priority", requireAuth, requireRole("owner", "staff"), orderController.updateOrderPriority);
+
+// A customer uploads proof of payment for their own order; owner/staff review
+// it (same lookup, broader role) before marking paid.
+router.post("/:id/receipt", requireAuth, upload.single("receipt"), orderController.uploadReceipt);
+router.get("/:id/receipt", requireAuth, orderController.getReceipt);
 
 // Any logged-in role — the controller enforces a customer can only cancel their own,
 // and only while it's still "placed" (owner/staff can cancel up until delivered).

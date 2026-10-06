@@ -60,7 +60,21 @@ const MIGRATIONS = [
   "alter table orders add column if not exists claimed_at timestamptz",
   // Owner/staff can flag a delivery as urgent — the delivery dashboard sorts
   // priority orders to the top, ahead of plain distance-from-store ordering.
-  "alter table orders add column if not exists priority boolean not null default false"
+  "alter table orders add column if not exists priority boolean not null default false",
+  // A customer-uploaded screenshot of their UPI/bank payment confirmation —
+  // owner/staff review it before marking the order paid. Nullable: cash orders
+  // and in-store POS sales never have one.
+  "alter table orders add column if not exists receipt_image bytea",
+  "alter table orders add column if not exists receipt_mime text",
+  "alter table orders add column if not exists receipt_uploaded_at timestamptz",
+  // Small key/value store for shop-wide settings editable from the admin
+  // Settings page (starting with the UPI VPA used to build the checkout QR) —
+  // kept out of source code since it's real business info, not a code constant.
+  `create table if not exists app_settings (
+     key text primary key,
+     value text,
+     updated_at timestamptz not null default now()
+   )`
 ];
 
 async function migrate() {

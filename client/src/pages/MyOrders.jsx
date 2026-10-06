@@ -3,6 +3,7 @@ import { Link } from "react-router-dom";
 import { api } from "../api";
 import StatusBadge from "../components/StatusBadge";
 import PushToggle from "../components/PushToggle";
+import PayWithUpi from "../components/PayWithUpi";
 import { paymentLabel } from "../paymentLabel";
 
 const ACTIVE = ["placed", "baking", "ready"];
@@ -31,7 +32,7 @@ const headline = (o) => {
   }[o.status] || "Your order";
 };
 
-function Tracker({ order, onCancel, cancelling }) {
+function Tracker({ order, onCancel, cancelling, settings }) {
   const [confirming, setConfirming] = useState(false);
   const steps = stepsFor(order);
   const at = ORDER.indexOf(order.status);
@@ -63,10 +64,13 @@ function Tracker({ order, onCancel, cancelling }) {
       </ol>
 
       {awaitingPayment && (
-        <p className="pay-note">
-          <i className="ti ti-clock" aria-hidden="true" />
-          <span><b>{order.paymentMethod === "upi" ? "UPI" : "Card"} payment awaiting confirmation.</b> We'll mark it paid once it reaches us.</span>
-        </p>
+        <>
+          <p className="pay-note">
+            <i className="ti ti-clock" aria-hidden="true" />
+            <span><b>{order.paymentMethod === "upi" ? "UPI" : "Card"} payment awaiting confirmation.</b> We'll mark it paid once it reaches us.</span>
+          </p>
+          <PayWithUpi order={order} settings={settings} />
+        </>
       )}
 
       <div className="track-lines">
@@ -108,11 +112,13 @@ export default function MyOrders() {
   const [orders, setOrders] = useState(null);
   const [error, setError] = useState(null);
   const [cancellingId, setCancellingId] = useState(null);
+  const [settings, setSettings] = useState(null);
 
   const load = () => api.getMyOrders().then((d) => setOrders(d.orders)).catch((e) => setError(e.message));
 
   useEffect(() => {
     load();
+    api.getSettings().then(setSettings).catch(() => {}); // the UPI pay card just doesn't show if this fails
   }, []);
 
   // While something is on its way, refresh now and then so the tracker moves on its own.
@@ -158,7 +164,7 @@ export default function MyOrders() {
       {active.length > 0 && (
         <div className="track-list">
           {active.map((o) => (
-            <Tracker key={o.id} order={o} onCancel={handleCancel} cancelling={cancellingId === o.id} />
+            <Tracker key={o.id} order={o} onCancel={handleCancel} cancelling={cancellingId === o.id} settings={settings} />
           ))}
         </div>
       )}

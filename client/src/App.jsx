@@ -23,6 +23,7 @@ import Poster from "./pages/Poster";
 import Customers from "./pages/Customers";
 import DeliveryPartners from "./pages/DeliveryPartners";
 import DeliveryDashboard from "./pages/DeliveryDashboard";
+import Settings from "./pages/Settings";
 import NotFound from "./pages/NotFound";
 
 export default function App() {
@@ -98,6 +99,14 @@ export default function App() {
         />
         {/* Owner and staff: whoever posts the morning banner in the WhatsApp group. */}
         <Route path="/poster" element={<Poster />} />
+        <Route
+          path="/settings"
+          element={
+            <ProtectedRoute roles={["owner"]}>
+              <Settings />
+            </ProtectedRoute>
+          }
+        />
       </Route>
 
       {/* Delivery partners: their own standalone shell, not the admin console or

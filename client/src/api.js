@@ -118,5 +118,23 @@ export const api = {
 
   getDeliveryPartners: () => request("/delivery-partners"),
   createDeliveryPartner: (partner) => request("/delivery-partners", { method: "POST", body: JSON.stringify(partner) }),
-  deleteDeliveryPartner: (id) => request(`/delivery-partners/${id}`, { method: "DELETE" })
+  deleteDeliveryPartner: (id) => request(`/delivery-partners/${id}`, { method: "DELETE" }),
+
+  getSettings: () => request("/settings"),
+  updateSettings: (fields) => request("/settings", { method: "PATCH", body: JSON.stringify(fields) }),
+
+  uploadReceipt: (orderId, file) => {
+    const body = new FormData();
+    body.append("receipt", file);
+    return request(`/orders/${orderId}/receipt`, { method: "POST", body });
+  },
+  // Bypasses request() — this returns image bytes, not JSON, and the <img> it
+  // feeds needs a blob: URL since a plain <img src> can't carry the auth header.
+  getReceiptBlob: async (orderId) => {
+    const res = await fetch(`${BASE}/orders/${orderId}/receipt`, {
+      headers: authToken ? { Authorization: `Bearer ${authToken}` } : {}
+    });
+    if (!res.ok) throw new Error("Couldn't load the receipt");
+    return res.blob();
+  }
 };

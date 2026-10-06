@@ -4,6 +4,7 @@ import { api } from "../api";
 import { useAuth } from "../auth/AuthContext";
 import { useCart } from "../cart/CartContext";
 import AddressPicker from "../components/AddressPicker";
+import PayWithUpi from "../components/PayWithUpi";
 import { paymentLabel } from "../paymentLabel";
 import { ZONES, calculateFee } from "../deliveryZones";
 
@@ -224,6 +225,7 @@ export default function Order() {
   const [activeOrder, setActiveOrder] = useState(null);
   const [favorites, setFavorites] = useState(loadFavorites);
   const [storeStatus, setStoreStatus] = useState(null);
+  const [settings, setSettings] = useState(null);
   const [fulfillment, setFulfillment] = useState("pickup");
   const [deliveryZone, setDeliveryZone] = useState(ZONES[0].id);
   const [deliveryAddress, setDeliveryAddress] = useState("");
@@ -252,6 +254,7 @@ export default function Order() {
   useEffect(() => {
     api.getMenu().then((d) => setMenu(d.items)).catch((e) => setError(e.message));
     api.getStoreStatus().then(setStoreStatus).catch(() => {}); // banner + slots are nice-to-haves for browsing
+    api.getSettings().then(setSettings).catch(() => {}); // the UPI pay card just doesn't show if this fails
   }, []);
 
   useEffect(() => {
@@ -577,6 +580,7 @@ export default function Order() {
                     <br />
                     Payment: {paymentLabel(placedOrder).toLowerCase()}
                   </p>
+                  <PayWithUpi order={placedOrder} settings={settings} />
                   <Link to="/my-orders" className="btn-checkout">Track your order</Link>
                   <Link to={`/receipt/${placedOrder.id}`} className="btn-secondary">View receipt</Link>
                   <button type="button" onClick={() => setPlacedOrder(null)} className="btn-text">Place another order</button>

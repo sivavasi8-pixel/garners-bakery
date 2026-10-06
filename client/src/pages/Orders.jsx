@@ -8,6 +8,29 @@ import { nextStep } from "../orderSteps";
 const statusOptions = ["placed", "baking", "ready", "delivered", "cancelled"];
 const REFRESH_MS = 30000;
 
+// Fetches the receipt image (needs the auth header, so a plain <a href> can't
+// serve it directly) and opens it in a new tab — simplest way to review one
+// without building a whole image-viewer modal for something staff glance at once.
+function ReceiptButton({ orderId }) {
+  const [busy, setBusy] = useState(false);
+  const handleClick = async () => {
+    setBusy(true);
+    try {
+      const blob = await api.getReceiptBlob(orderId);
+      window.open(URL.createObjectURL(blob), "_blank", "noopener");
+    } catch {
+      // the thumbnail link is a nice-to-have — a failed fetch just does nothing
+    } finally {
+      setBusy(false);
+    }
+  };
+  return (
+    <button type="button" className="a-btn quiet" disabled={busy} onClick={handleClick}>
+      <i className="ti ti-receipt" aria-hidden="true" /> {busy ? "Opening…" : "View receipt"}
+    </button>
+  );
+}
+
 const zoneLabel = (id) => ZONES.find((z) => z.id === id)?.label || id;
 const deliveryFeeLabel = (o) => {
   if (o.deliveryFee === null) return "fee TBC (Porter)";
@@ -82,6 +105,7 @@ function OrderCard({ o, busy, onAdvance, onPaid, onCancel, onTogglePriority }) {
               {o.priority ? "Unmark urgent" : "Mark urgent"}
             </button>
           )}
+          {!finished && o.paymentStatus !== "paid" && o.hasReceipt && <ReceiptButton orderId={o.id} />}
           {!finished && o.paymentStatus !== "paid" && (
             <button type="button" className="a-btn quiet" disabled={busy} onClick={onPaid}>Mark paid</button>
           )}
@@ -309,7 +333,10 @@ export default function AdminOrders() {
                     ) : o.status === "cancelled" ? (
                       <span className="muted">—</span>
                     ) : (
-                      <button type="button" onClick={() => runAction(o.id, () => api.updateOrderPayment(o.id, "paid"))} className="admin-btn-xs">Mark paid</button>
+                      <div style={{ display: "flex", flexDirection: "column", gap: 4, alignItems: "flex-start" }}>
+                        {o.hasReceipt && <ReceiptButton orderId={o.id} />}
+                        <button type="button" onClick={() => runAction(o.id, () => api.updateOrderPayment(o.id, "paid"))} className="admin-btn-xs">Mark paid</button>
+                      </div>
                     )}
                   </td>
                   <td><StatusPill status={o.status} /></td>
