@@ -29,6 +29,11 @@ export const api = {
   signup: (name, email, password, phone, pin) =>
     request("/auth/signup", { method: "POST", body: JSON.stringify({ name, email, password, phone, pin }) }),
   me: () => request("/auth/me"),
+  updateProfile: (name, phone) => request("/auth/me", { method: "PATCH", body: JSON.stringify({ name, phone }) }),
+  changePassword: (currentPassword, newPassword) =>
+    request("/auth/change-password", { method: "POST", body: JSON.stringify({ currentPassword, newPassword }) }),
+  changePin: (currentPassword, newPin) =>
+    request("/auth/change-pin", { method: "POST", body: JSON.stringify({ currentPassword, newPin }) }),
   resetPassword: (email, pin, newPassword) =>
     request("/auth/reset-password", { method: "POST", body: JSON.stringify({ email, pin, newPassword }) }),
   requestPinReset: (email) =>

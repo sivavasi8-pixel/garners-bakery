@@ -41,6 +41,14 @@ module.exports = {
     );
     return mapRow(rows[0]);
   },
+  // Self-service: a logged-in user editing their own name/phone from My Account.
+  updateProfile: async (id, { name, phone }) => {
+    const { rows } = await pool.query(
+      "update users set name = $1, phone = $2 where id = $3 returning *",
+      [name, phone, Number(id)]
+    );
+    return mapRow(rows[0]);
+  },
   // Self-service password reset: customer supplies email + PIN + new password.
   resetPassword: async (id, newPasswordHash) => {
     const { rows } = await pool.query(

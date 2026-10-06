@@ -71,6 +71,60 @@ exports.me = asyncHandler(async (req, res) => {
   res.json({ user: publicUser(user) });
 });
 
+// Self-service: a logged-in user editing their own name/phone (My Account).
+// Email is deliberately not editable here — changing it safely needs its own
+// re-verification flow, which doesn't exist yet.
+exports.updateProfile = asyncHandler(async (req, res) => {
+  const { name, phone } = req.body;
+  if (!name || !name.trim()) return res.status(400).json({ error: "Name is required" });
+  if (phone && !PHONE_RE.test(phone.trim())) {
+    return res.status(400).json({ error: "Enter a valid phone number" });
+  }
+  const updated = await users.updateProfile(req.user.id, { name: name.trim(), phone: phone ? phone.trim() : null });
+  res.json({ user: publicUser(updated) });
+});
+
+// Self-service password change for an already logged-in user — distinct from
+// resetPassword (forgot-password-via-PIN, works while logged out): this
+// requires the CURRENT password, same "prove you're really you" rule a stolen
+// session token alone shouldn't bypass for something this sensitive.
+exports.changePassword = asyncHandler(async (req, res) => {
+  const { currentPassword, newPassword } = req.body;
+  if (!currentPassword || !newPassword) {
+    return res.status(400).json({ error: "currentPassword and newPassword are required" });
+  }
+  if (newPassword.length < 8) {
+    return res.status(400).json({ error: "New password must be at least 8 characters" });
+  }
+  const user = await users.findById(req.user.id);
+  if (!bcrypt.compareSync(currentPassword, user.passwordHash)) {
+    return res.status(401).json({ error: "Current password is incorrect" });
+  }
+  await users.resetPassword(user.id, bcrypt.hashSync(newPassword, 10));
+  res.json({ message: "Password updated." });
+});
+
+// Self-service PIN change — same current-password check as changePassword.
+// Customer-only: staff/owner/delivery accounts have no PIN to change.
+exports.changePin = asyncHandler(async (req, res) => {
+  const { currentPassword, newPin } = req.body;
+  if (!currentPassword || !newPin) {
+    return res.status(400).json({ error: "currentPassword and newPin are required" });
+  }
+  if (!/^\d{6}$/.test(newPin)) {
+    return res.status(400).json({ error: "PIN must be exactly 6 digits" });
+  }
+  const user = await users.findById(req.user.id);
+  if (user.role !== "customer") {
+    return res.status(403).json({ error: "Only customer accounts have a PIN" });
+  }
+  if (!bcrypt.compareSync(currentPassword, user.passwordHash)) {
+    return res.status(401).json({ error: "Current password is incorrect" });
+  }
+  await users.adminSetPin(user.id, bcrypt.hashSync(newPin, 10));
+  res.json({ message: "PIN updated." });
+});
+
 // Self-service: customer provides email + PIN + new password — no admin needed.
 // Rate-limited via the authLimiter in index.js (same window as /login).
 exports.resetPassword = asyncHandler(async (req, res) => {

@@ -15,6 +15,7 @@ import Signup from "./pages/Signup";
 import ResetPassword from "./pages/ResetPassword";
 import MenuAdmin from "./pages/MenuAdmin";
 import MyOrders from "./pages/MyOrders";
+import MyAccount from "./pages/MyAccount";
 import Reports from "./pages/Reports";
 import POS from "./pages/POS";
 import Receipt from "./pages/Receipt";
@@ -51,6 +52,14 @@ export default function App() {
           element={
             <ProtectedRoute roles={["customer"]}>
               <MyOrders />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/my-account"
+          element={
+            <ProtectedRoute roles={["customer"]}>
+              <MyAccount />
             </ProtectedRoute>
           }
         />

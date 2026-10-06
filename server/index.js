@@ -43,6 +43,8 @@ app.use("/api/auth/login", authLimiter);
 app.use("/api/auth/signup", authLimiter);
 app.use("/api/auth/reset-password", authLimiter);
 app.use("/api/auth/request-pin-reset", authLimiter);
+app.use("/api/auth/change-password", authLimiter);
+app.use("/api/auth/change-pin", authLimiter);
 
 app.get("/api/health", (req, res) => res.json({ status: "ok", service: "GARNERS Bakery API" }));
 

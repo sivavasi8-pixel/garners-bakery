@@ -16,7 +16,12 @@ export default function CustomerNav() {
 
   const customerTabs = [
     { to: "/order", label: "Menu", iconClass: "ti-bread", end: true },
-    ...(user?.role === "customer" ? [{ to: "/my-orders", label: "My orders", iconClass: "ti-receipt" }] : []),
+    ...(user?.role === "customer"
+      ? [
+          { to: "/my-orders", label: "My orders", iconClass: "ti-receipt" },
+          { to: "/my-account", label: "Account", iconClass: "ti-user" }
+        ]
+      : []),
     ...(isShopUser ? [{ to: "/dashboard", label: "Console", iconClass: "ti-layout-dashboard" }] : [])
   ];
 
@@ -33,7 +38,10 @@ export default function CustomerNav() {
           <nav className="topbar-nav" aria-label="Main">
             <NavLink to="/order" end className={({ isActive }) => `topbar-link${isActive ? " active" : ""}`}>Menu</NavLink>
             {user?.role === "customer" && (
-              <NavLink to="/my-orders" className={({ isActive }) => `topbar-link${isActive ? " active" : ""}`}>My orders</NavLink>
+              <>
+                <NavLink to="/my-orders" className={({ isActive }) => `topbar-link${isActive ? " active" : ""}`}>My orders</NavLink>
+                <NavLink to="/my-account" className={({ isActive }) => `topbar-link${isActive ? " active" : ""}`}>My account</NavLink>
+              </>
             )}
             {isShopUser && (
               <NavLink to="/dashboard" className="topbar-link">Shop console</NavLink>
@@ -46,7 +54,13 @@ export default function CustomerNav() {
                 {/* Only customers need their own order's status pushed to them —
                     owner/staff get the same toggle in the admin shell instead. */}
                 {user.role === "customer" && <PushToggle className="topbar-ghost" />}
-                <span className="topbar-user" title={user.name}>{user.name}</span>
+                {/* Tapping your own name opens My Account — the one access point
+                    visible at every width, not just the desktop nav row. */}
+                {user.role === "customer" ? (
+                  <Link to="/my-account" className="topbar-user" title={`${user.name} · My Account`}>{user.name}</Link>
+                ) : (
+                  <span className="topbar-user" title={user.name}>{user.name}</span>
+                )}
                 <button className="topbar-ghost" onClick={handleLogout}>Log out</button>
               </>
             ) : (
@@ -126,8 +140,9 @@ export default function CustomerNav() {
            always be able to see whose account they're in, even on a phone. */
         .topbar-user {
           font-size: 13px; color: var(--cream); max-width: 90px; overflow: hidden;
-          text-overflow: ellipsis; white-space: nowrap;
+          text-overflow: ellipsis; white-space: nowrap; text-decoration: none;
         }
+        a.topbar-user:hover { text-decoration: underline; }
         .topbar-ghost {
           display: none; background: transparent; color: var(--cream); text-decoration: none;
           border: 1px solid rgba(250,248,243,0.4); padding: 9px 14px; border-radius: 10px; font-size: 14px; font-weight: 600;

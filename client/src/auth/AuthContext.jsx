@@ -53,8 +53,20 @@ export function AuthProvider({ children }) {
     setUser(null);
   };
 
+  // My Account saves a profile change (name/phone) — merges it into the
+  // already-logged-in session so the nav/topbar reflect it immediately,
+  // without forcing a re-login.
+  const updateUser = (patch) => {
+    setUser((prev) => {
+      const next = { ...prev, ...patch };
+      const saved = JSON.parse(localStorage.getItem(STORAGE_KEY) || "null");
+      if (saved) localStorage.setItem(STORAGE_KEY, JSON.stringify({ ...saved, user: next }));
+      return next;
+    });
+  };
+
   return (
-    <AuthContext.Provider value={{ user, ready, login, signup, logout }}>{children}</AuthContext.Provider>
+    <AuthContext.Provider value={{ user, ready, login, signup, logout, updateUser }}>{children}</AuthContext.Provider>
   );
 }
 
