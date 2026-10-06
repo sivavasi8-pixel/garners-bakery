@@ -55,10 +55,6 @@ export default function AdminLayout() {
             <i className="ti ti-building-store" aria-hidden="true" />
             <span>View shop</span>
           </a>
-          <a href="/handbook.html" target="_blank" rel="noopener noreferrer" className="admin-nav-item">
-            <i className="ti ti-book" aria-hidden="true" />
-            <span>Guide</span>
-          </a>
           <div className="admin-sidebar-bell">
             <NotificationBell align="left" openUpward />
           </div>
@@ -144,9 +140,19 @@ function MobileTopbar({ navItems, onLogout }) {
   return (
     <div className="admin-mobile-topbar-wrap">
       <div className="admin-mobile-topbar">
-        <div style={{ display: "flex", alignItems: "baseline", gap: 8 }}>
+        <div style={{ display: "flex", alignItems: "baseline", gap: 8, minWidth: 0 }}>
           <span style={{ fontFamily: "var(--font-display)", fontWeight: 700, fontSize: 18, letterSpacing: "0.14em" }}>GARNERS</span>
-          <span style={{ fontFamily: "var(--font-display)", fontStyle: "italic", fontSize: 12, color: "var(--a-sidebar-text)" }}>Shop console</span>
+          {/* Visible at a glance, not just after opening the menu — which account
+              someone's in shouldn't require an extra tap to confirm. */}
+          <span
+            title={user?.name}
+            style={{
+              fontSize: 12, color: "var(--a-sidebar-text)", overflow: "hidden",
+              textOverflow: "ellipsis", whiteSpace: "nowrap", maxWidth: 90
+            }}
+          >
+            {user?.name}
+          </span>
         </div>
         <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
           <NotificationBell />
@@ -175,10 +181,6 @@ function MobileTopbar({ navItems, onLogout }) {
               <span>{n.label}</span>
             </NavLink>
           ))}
-          <a href="/handbook.html" target="_blank" rel="noopener noreferrer" className="admin-nav-item">
-            <i className="ti ti-book" aria-hidden="true" />
-            <span>Guide</span>
-          </a>
           <a href="/order" className="admin-nav-item">
             <i className="ti ti-building-store" aria-hidden="true" />
             <span>View shop</span>

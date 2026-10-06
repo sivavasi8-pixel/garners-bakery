@@ -38,7 +38,6 @@ export default function CustomerNav() {
             {isShopUser && (
               <NavLink to="/dashboard" className="topbar-link">Shop console</NavLink>
             )}
-            <a href="/handbook.html" target="_blank" rel="noopener noreferrer" className="topbar-link">Guide</a>
           </nav>
 
           <div className="topbar-right">
@@ -47,7 +46,7 @@ export default function CustomerNav() {
                 {/* Only customers need their own order's status pushed to them —
                     owner/staff get the same toggle in the admin shell instead. */}
                 {user.role === "customer" && <PushToggle className="topbar-ghost" />}
-                <span className="topbar-user">{user.name}</span>
+                <span className="topbar-user" title={user.name}>{user.name}</span>
                 <button className="topbar-ghost" onClick={handleLogout}>Log out</button>
               </>
             ) : (
@@ -76,10 +75,6 @@ export default function CustomerNav() {
             <span>{tab.label}</span>
           </NavLink>
         ))}
-        <a href="/handbook.html" target="_blank" rel="noopener noreferrer" className="tabbar-item">
-          <i className="ti ti-book" aria-hidden="true" />
-          <span>Guide</span>
-        </a>
         {user ? (
           <button className="tabbar-item" onClick={handleLogout}>
             <i className="ti ti-logout" aria-hidden="true" />
@@ -126,8 +121,13 @@ export default function CustomerNav() {
         .topbar-link:hover { color: var(--cream); }
         .topbar-link.active { color: var(--cream); font-weight: 700; border-bottom-color: var(--kraft); }
 
-        .topbar-right { display: flex; align-items: center; gap: 10px; }
-        .topbar-user { display: none; font-size: 14px; color: var(--on-green-muted); }
+        .topbar-right { display: flex; align-items: center; gap: 10px; min-width: 0; }
+        /* Visible at every width (not just desktop) — a logged-in customer should
+           always be able to see whose account they're in, even on a phone. */
+        .topbar-user {
+          font-size: 13px; color: var(--cream); max-width: 90px; overflow: hidden;
+          text-overflow: ellipsis; white-space: nowrap;
+        }
         .topbar-ghost {
           display: none; background: transparent; color: var(--cream); text-decoration: none;
           border: 1px solid rgba(250,248,243,0.4); padding: 9px 14px; border-radius: 10px; font-size: 14px; font-weight: 600;
@@ -146,7 +146,7 @@ export default function CustomerNav() {
 
         @media (min-width: 720px) {
           .topbar-nav { display: flex; }
-          .topbar-user { display: inline; }
+          .topbar-user { max-width: none; }
           .topbar-ghost { display: inline-block; }
         }
 
