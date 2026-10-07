@@ -26,6 +26,7 @@ export default function AdminLayout() {
   const navItems = allNavItems.filter((n) => !n.ownerOnly || user?.role === "owner");
 
   const handleLogout = () => {
+    if (!window.confirm("Log out of your account?")) return;
     logout();
     navigate("/login");
   };

@@ -116,6 +116,7 @@ export default function DeliveryDashboard() {
   };
 
   const handleLogout = () => {
+    if (!window.confirm("Log out of your account?")) return;
     logout();
     navigate("/login");
   };

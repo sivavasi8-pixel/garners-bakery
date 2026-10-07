@@ -10,6 +10,7 @@ export default function CustomerNav() {
   const isShopUser = user?.role === "owner" || user?.role === "staff";
 
   const handleLogout = () => {
+    if (!window.confirm("Log out of your account?")) return;
     logout();
     navigate("/login");
   };
