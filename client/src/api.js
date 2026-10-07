@@ -5,23 +5,48 @@ export function setAuthToken(token) {
   authToken = token;
 }
 
+const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+
 async function request(path, options = {}) {
   // Skip the JSON content-type for FormData (image uploads) — the browser needs to set its
   // own multipart boundary, and overriding it here would break the upload silently.
   const isFormData = options.body instanceof FormData;
-  const res = await fetch(`${BASE}${path}`, {
-    headers: {
-      ...(isFormData ? {} : { "Content-Type": "application/json" }),
-      ...(authToken ? { Authorization: `Bearer ${authToken}` } : {})
-    },
-    ...options
-  });
-  if (!res.ok) {
-    const body = await res.json().catch(() => ({}));
-    throw new Error(body.error || `Request failed: ${res.status}`);
+  const isGet = !options.method || options.method === "GET";
+  // Render's free tier spins the server down after idle and takes 30-60s to wake
+  // on the next request — the request that happens to land during that window
+  // fails outright with a network-level "Failed to fetch", not an HTTP error, so
+  // it never even reaches the `!res.ok` check below. Retrying a GET (safe to
+  // repeat) after a short wait usually succeeds once the server's awake; a
+  // mutating request is never auto-retried, since a network failure doesn't
+  // guarantee the server never received it.
+  const maxAttempts = isGet ? 3 : 1;
+  let lastErr;
+  for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+    let res;
+    try {
+      res = await fetch(`${BASE}${path}`, {
+        headers: {
+          ...(isFormData ? {} : { "Content-Type": "application/json" }),
+          ...(authToken ? { Authorization: `Bearer ${authToken}` } : {})
+        },
+        ...options
+      });
+    } catch (err) {
+      lastErr = err;
+      if (attempt < maxAttempts) {
+        await sleep(attempt * 1500);
+        continue;
+      }
+      throw new Error("Couldn't reach the server — check your connection and try again.");
+    }
+    if (!res.ok) {
+      const body = await res.json().catch(() => ({}));
+      throw new Error(body.error || `Request failed: ${res.status}`);
+    }
+    if (res.status === 204) return null;
+    return res.json();
   }
-  if (res.status === 204) return null;
-  return res.json();
+  throw lastErr;
 }
 
 export const api = {

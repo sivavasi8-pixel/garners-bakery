@@ -243,6 +243,7 @@ export default function AdminMenu() {
   const [form, setForm] = useState(emptyForm);
   const [editingId, setEditingId] = useState(null);
   const [imageFile, setImageFile] = useState(null);
+  const [removeImage, setRemoveImage] = useState(false);
   const [saving, setSaving] = useState(false);
   const [formError, setFormError] = useState(null);
   const [recipeItemId, setRecipeItemId] = useState(null);
@@ -295,6 +296,7 @@ export default function AdminMenu() {
     setEditingId(item.id);
     setForm({ name: item.name, category: item.category, price: item.price ?? "", unit: item.unit, description: item.description || "" });
     setImageFile(null);
+    setRemoveImage(false);
     setFormError(null);
   };
 
@@ -302,6 +304,7 @@ export default function AdminMenu() {
     setEditingId(null);
     setForm((f) => ({ ...emptyForm, category: f.category }));
     setImageFile(null);
+    setRemoveImage(false);
     setFormError(null);
   };
 
@@ -317,6 +320,7 @@ export default function AdminMenu() {
       fd.append("unit", form.unit);
       fd.append("description", form.description);
       if (imageFile) fd.append("image", imageFile);
+      if (removeImage && !imageFile) fd.append("removeImage", "true");
 
       if (editingId) {
         await api.updateMenuItem(editingId, fd);
@@ -494,10 +498,38 @@ export default function AdminMenu() {
           <input type="number" step="0.01" className="admin-search" placeholder="Price (leave blank for made-to-order)" value={form.price} onChange={(e) => setForm({ ...form, price: e.target.value })} style={{ marginBottom: 8 }} />
           <input className="admin-search" placeholder="Unit (e.g. loaf, piece, box)" value={form.unit} onChange={(e) => setForm({ ...form, unit: e.target.value })} style={{ marginBottom: 8 }} required />
           <textarea className="admin-search" placeholder="Description" value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} rows={3} style={{ marginBottom: 10, resize: "vertical" }} />
+          {editingId && !imageFile && !removeImage && items?.find((i) => i.id === editingId)?.imageUrl && (
+            <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 8 }}>
+              <img
+                src={items.find((i) => i.id === editingId).imageUrl}
+                alt=""
+                style={{ width: 44, height: 44, borderRadius: 8, objectFit: "cover", border: "1px solid var(--a-border)" }}
+              />
+              <button
+                type="button"
+                onClick={() => setRemoveImage(true)}
+                className="admin-link-btn"
+                style={{ color: "var(--a-danger-text)" }}
+              >
+                Remove photo
+              </button>
+            </div>
+          )}
+          {removeImage && (
+            <p className="admin-note" style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+              Photo will be removed when you save.
+              <button type="button" onClick={() => setRemoveImage(false)} className="admin-link-btn">Undo</button>
+            </p>
+          )}
           <label className="admin-photo-choose">
             <i className="ti ti-photo" aria-hidden="true" />
             {imageFile ? imageFile.name : "Choose photo"}
-            <input type="file" accept="image/*" onChange={(e) => setImageFile(e.target.files[0] || null)} style={{ display: "none" }} />
+            <input
+              type="file"
+              accept="image/*"
+              onChange={(e) => { setImageFile(e.target.files[0] || null); setRemoveImage(false); }}
+              style={{ display: "none" }}
+            />
           </label>
           {formError && <p style={{ fontSize: 12, color: "var(--a-danger-text)", marginBottom: 10 }}>{formError}</p>}
           <div style={{ display: "flex", gap: 8 }}>

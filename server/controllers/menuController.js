@@ -51,7 +51,8 @@ const fromRequest = (req) => ({
   price: parsePrice(req.body.price),
   unit: req.body.unit,
   description: req.body.description,
-  image: req.file ? { data: req.file.buffer, mime: req.file.mimetype } : null
+  image: req.file ? { data: req.file.buffer, mime: req.file.mimetype } : null,
+  removeImage: req.body.removeImage === "true"
 });
 
 exports.createItem = asyncHandler(async (req, res) => {

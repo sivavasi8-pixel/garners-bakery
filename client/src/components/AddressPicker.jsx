@@ -182,20 +182,20 @@ export default function AddressPicker({ onChange, fallbackPhone }) {
               <i className="ti ti-chevron-left" aria-hidden="true" /> Use a saved address
             </button>
           )}
-          <label className="field">
-            <span className="field-label">Label</span>
+          <label className="ap-field">
+            <span className="ap-field-label">Label</span>
             <input
-              className="field-input"
+              className="ap-input"
               value={label}
               onChange={(e) => setLabel(e.target.value)}
               placeholder="Home, Work, ..."
               maxLength={40}
             />
           </label>
-          <label className="field">
-            <span className="field-label">Address</span>
+          <label className="ap-field">
+            <span className="ap-field-label">Address</span>
             <textarea
-              className="field-input field-textarea"
+              className="ap-input ap-textarea"
               rows={2}
               value={address}
               onChange={(e) => setAddress(e.target.value)}
@@ -206,19 +206,19 @@ export default function AddressPicker({ onChange, fallbackPhone }) {
             <i className="ti ti-current-location" aria-hidden="true" />
             {locating ? "Getting your location…" : "Use my current location"}
           </button>
-          {locError && <p className="checkout-error">{locError}</p>}
+          {locError && <p className="ap-error">{locError}</p>}
           {lat !== null && lng !== null && (
-            <p className="delivery-note">
+            <p className="ap-note">
               <i className="ti ti-map-pin" aria-hidden="true" style={{ fontSize: 13, marginRight: 4 }} />
               Pinned location attached — the shop can open it on a map.
             </p>
           )}
-          <label className="field">
-            <span className="field-label">
-              Phone for this address <span className="field-hint">· optional, falls back to the number below</span>
+          <label className="ap-field">
+            <span className="ap-field-label">
+              Phone for this address <span className="ap-field-hint">· optional, falls back to the number below</span>
             </span>
             <input
-              className="field-input"
+              className="ap-input"
               value={addrPhone}
               onChange={(e) => setAddrPhone(e.target.value)}
               placeholder={fallbackPhone || ""}
@@ -268,6 +268,21 @@ export default function AddressPicker({ onChange, fallbackPhone }) {
         .address-locate-btn:disabled { opacity: 0.6; }
         .address-save-check { display: flex; align-items: center; gap: 8px; font-size: 13.5px; color: var(--text-primary); }
         .address-save-check input { width: 18px; height: 18px; accent-color: var(--green); }
+
+        /* Self-contained field styling — this component is dropped into pages
+           (Order.jsx, MyAccount.jsx) that may or may not already define a
+           ".field" convention of their own, so it never borrows one. */
+        .ap-field { display: flex; flex-direction: column; gap: 6px; }
+        .ap-field-label { font-size: 13.5px; font-weight: 600; }
+        .ap-field-hint { font-weight: 400; color: var(--text-secondary); }
+        .ap-input {
+          width: 100%; min-height: 46px; padding: 10px 14px; font: 400 15px var(--font-body); color: var(--text-primary);
+          border: 1px solid var(--border); border-radius: 12px; background: var(--surface-1); box-sizing: border-box;
+        }
+        .ap-input:focus { border-color: var(--green); outline: none; }
+        .ap-textarea { resize: vertical; }
+        .ap-error { margin: 0; font-size: 13.5px; color: var(--red); }
+        .ap-note { margin: 0; font-size: 13px; color: var(--text-secondary); display: flex; align-items: center; }
       `}</style>
     </div>
   );

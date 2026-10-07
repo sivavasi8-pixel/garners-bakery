@@ -108,14 +108,18 @@ module.exports = {
     );
     return mapRow({ ...rows[0], gallery: [] });
   },
-  update: async (id, { name, category, price, unit, description, image }) => {
+  update: async (id, { name, category, price, unit, description, image, removeImage }) => {
     // Only overwrite the image if a new one was uploaded — a plain field edit shouldn't wipe the photo.
+    // removeImage is the explicit opt-in to actually clear it back to "no photo",
+    // which coalesce alone can never do (there was previously no way to clear a
+    // cover photo once set, only replace it with another one).
     const { rows } = await pool.query(
       `update menu_items set
          name = $1, category = $2, price = $3, unit = $4, description = $5,
-         image_data = coalesce($6, image_data), image_mime = coalesce($7, image_mime)
-       where id = $8 returning *`,
-      [name, category, price ?? null, unit, description ?? null, image?.data ?? null, image?.mime ?? null, Number(id)]
+         image_data = case when $8 then null else coalesce($6, image_data) end,
+         image_mime = case when $8 then null else coalesce($7, image_mime) end
+       where id = $9 returning *`,
+      [name, category, price ?? null, unit, description ?? null, image?.data ?? null, image?.mime ?? null, Boolean(removeImage) && !image, Number(id)]
     );
     if (!rows[0]) return null;
     return module.exports.getById(id);
