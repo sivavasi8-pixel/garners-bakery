@@ -138,7 +138,11 @@ export const api = {
   updateAddress: (id, fields) => request(`/addresses/${id}`, { method: "PATCH", body: JSON.stringify(fields) }),
   deleteAddress: (id) => request(`/addresses/${id}`, { method: "DELETE" }),
   setDefaultAddress: (id) => request(`/addresses/${id}/default`, { method: "PATCH" }),
-  reverseGeocode: (lat, lng) => request("/addresses/reverse-geocode", { method: "POST", body: JSON.stringify({ lat, lng }) }),
+
+  // Shared across any logged-in role — Settings (owner) and the address book
+  // (customer) both use these.
+  reverseGeocode: (lat, lng) => request("/geocode/reverse", { method: "POST", body: JSON.stringify({ lat, lng }) }),
+  resolveMapsLink: (url) => request("/geocode/resolve-link", { method: "POST", body: JSON.stringify({ url }) }),
 
   getAvailableDeliveries: () => request("/delivery/orders/available"),
   getMyDeliveries: () => request("/delivery/orders/mine"),

@@ -9,7 +9,6 @@ router.use(requireAuth, requireRole("customer"));
 
 router.get("/", addressController.listMyAddresses);
 router.post("/", addressController.createAddress);
-router.post("/reverse-geocode", addressController.reverseGeocode);
 router.patch("/:id", addressController.updateAddress);
 router.patch("/:id/default", addressController.setDefaultAddress);
 router.delete("/:id", addressController.deleteAddress);

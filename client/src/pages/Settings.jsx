@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { api } from "../api";
+import MapPicker from "../components/MapPicker";
 
 export default function Settings() {
   const [loading, setLoading] = useState(true);
@@ -15,6 +16,10 @@ export default function Settings() {
   const [shopLng, setShopLng] = useState(null);
   const [locating, setLocating] = useState(false);
   const [locError, setLocError] = useState(null);
+  const [showMap, setShowMap] = useState(false);
+  const [mapsLink, setMapsLink] = useState("");
+  const [resolvingLink, setResolvingLink] = useState(false);
+  const [linkError, setLinkError] = useState(null);
   const [savingLocation, setSavingLocation] = useState(false);
   const [locationSaveError, setLocationSaveError] = useState(null);
   const [locationSaved, setLocationSaved] = useState(false);
@@ -48,25 +53,56 @@ export default function Settings() {
     }
   };
 
+  // Shared by all three ways to get a pin — GPS, the map, or a pasted link —
+  // so each only sets the coordinates; filling in the address text (when it's
+  // still empty) happens in one place.
+  const applyPin = async (lat, lng) => {
+    setShopLat(lat);
+    setShopLng(lng);
+    if (!shopAddress.trim()) {
+      try {
+        const res = await api.reverseGeocode(lat, lng);
+        if (res.address) setShopAddress(res.address);
+      } catch {
+        // Not critical — the pin itself is what matters for distance calc.
+      }
+    }
+  };
+
   const handleUseLocation = () => {
     if (!("geolocation" in navigator)) {
-      setLocError("Location isn't supported in this browser — you can still save just the address below.");
+      setLocError("Location isn't supported in this browser — try 'Pick on map' or just save the address below.");
       return;
     }
     setLocating(true);
     setLocError(null);
     navigator.geolocation.getCurrentPosition(
-      (pos) => {
-        setShopLat(pos.coords.latitude);
-        setShopLng(pos.coords.longitude);
+      async (pos) => {
+        await applyPin(pos.coords.latitude, pos.coords.longitude);
         setLocating(false);
       },
       () => {
-        setLocError("Couldn't get your location — check site permissions, or just save the address below.");
+        setLocError("Couldn't get your location — check site permissions, or try 'Pick on map' instead.");
         setLocating(false);
       },
       { enableHighAccuracy: true, timeout: 10000 }
     );
+  };
+
+  const handleResolveLink = async () => {
+    if (!mapsLink.trim()) return;
+    setResolvingLink(true);
+    setLinkError(null);
+    try {
+      const res = await api.resolveMapsLink(mapsLink.trim());
+      await applyPin(res.lat, res.lng);
+      setMapsLink("");
+      setShowMap(true);
+    } catch (err) {
+      setLinkError(err.message);
+    } finally {
+      setResolvingLink(false);
+    }
   };
 
   const handleSaveLocation = async (e) => {
@@ -122,11 +158,34 @@ export default function Settings() {
           />
         </label>
 
-        <button type="button" onClick={handleUseLocation} disabled={locating} style={locateBtn}>
-          <i className="ti ti-current-location" aria-hidden="true" />
-          {locating ? "Getting your location…" : "Use my current location"}
-        </button>
+        <div style={{ display: "flex", gap: "8px" }}>
+          <button type="button" onClick={handleUseLocation} disabled={locating} style={{ ...locateBtn, flex: 1 }}>
+            <i className="ti ti-current-location" aria-hidden="true" />
+            {locating ? "Getting your location…" : "Use my current location"}
+          </button>
+          <button type="button" onClick={() => setShowMap((s) => !s)} style={{ ...locateBtn, flex: 1 }}>
+            <i className="ti ti-map-2" aria-hidden="true" />
+            {showMap ? "Hide map" : "Pick on map"}
+          </button>
+        </div>
         {locError && <p style={{ color: "var(--a-danger-text)", fontSize: "12.5px", margin: 0 }}>{locError}</p>}
+
+        <div style={{ display: "flex", gap: "8px" }}>
+          <input
+            type="text"
+            value={mapsLink}
+            onChange={(e) => setMapsLink(e.target.value)}
+            placeholder="Paste a Google Maps link"
+            style={{ ...inputStyle, flex: 1 }}
+          />
+          <button type="button" onClick={handleResolveLink} disabled={resolvingLink || !mapsLink.trim()} style={linkBtn}>
+            {resolvingLink ? "…" : "Use link"}
+          </button>
+        </div>
+        {linkError && <p style={{ color: "var(--a-danger-text)", fontSize: "12.5px", margin: 0 }}>{linkError}</p>}
+
+        {showMap && <MapPicker lat={shopLat} lng={shopLng} onPick={applyPin} />}
+
         {shopLat != null && shopLng != null ? (
           <p style={{ margin: 0, fontSize: "12px", color: "var(--a-text-secondary)" }}>
             Pinned at {shopLat.toFixed(5)}, {shopLng.toFixed(5)}
@@ -217,6 +276,18 @@ const locateBtn = {
   borderRadius: "10px",
   background: "var(--a-bg)",
   color: "var(--a-text-primary)",
+  fontWeight: 600,
+  fontSize: "14px",
+  cursor: "pointer"
+};
+
+const linkBtn = {
+  flexShrink: 0,
+  padding: "0 16px",
+  border: "1px solid var(--a-border)",
+  borderRadius: "10px",
+  background: "var(--a-bg)",
+  color: "var(--a-green)",
   fontWeight: 600,
   fontSize: "14px",
   cursor: "pointer"

@@ -86,14 +86,3 @@ exports.setDefaultAddress = asyncHandler(async (req, res) => {
   const updated = await addresses.setDefault(req.params.id, req.user.id);
   res.json({ address: updated });
 });
-
-// Turns a "use my current location" GPS fix into a readable address for the
-// add-address form to prefill. Proxied through the server (rather than
-// fetched straight from the browser) because Nominatim's usage policy
-// requires an identifying User-Agent, which a browser fetch can't set.
-exports.reverseGeocode = asyncHandler(async (req, res) => {
-  const lat = Number(req.body.lat);
-  const lng = Number(req.body.lng);
-  if (!Number.isFinite(lat) || !Number.isFinite(lng)) throw badRequest("lat and lng are required numbers");
-  res.json({ address: await geocode.reverseGeocode(lat, lng), lat, lng });
-});
