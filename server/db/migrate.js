@@ -74,7 +74,25 @@ const MIGRATIONS = [
      key text primary key,
      value text,
      updated_at timestamptz not null default now()
-   )`
+   )`,
+  // What an ingredient actually costs to buy — lets ingredient spend be computed
+  // from real recipe-driven consumption instead of only hand-typed Expenses rows.
+  // Nullable: existing ingredients just show no cost data until the owner fills it in.
+  "alter table inventory add column if not exists cost_per_unit numeric",
+  // A log of every quantity change, not just the live number itself — the live
+  // "quantity" column answers "how much is left"; this answers "what happened
+  // to it" (an order deducting it, an order being cancelled and giving it back,
+  // or someone correcting/restocking it by hand), which the live number alone
+  // can never reconstruct after the fact.
+  `create table if not exists inventory_movements (
+     id serial primary key,
+     inventory_id integer not null references inventory(id) on delete cascade,
+     change numeric not null,
+     reason text not null check (reason in ('order_deduct', 'order_restock', 'manual_set', 'manual_adjust')),
+     reference text,
+     created_at timestamptz not null default now()
+   )`,
+  "create index if not exists idx_inventory_movements_inventory_id on inventory_movements(inventory_id, created_at desc)"
 ];
 
 async function migrate() {

@@ -66,8 +66,21 @@ create table if not exists inventory (
   unit text not null,
   quantity numeric not null default 0,
   reorder_level numeric not null default 0,
-  supplier text
+  supplier text,
+  cost_per_unit numeric -- what this ingredient costs to buy; null until the owner fills it in
 );
+
+-- A log of every quantity change, not just the live number itself — see
+-- server/db/migrate.js for why this exists alongside `inventory.quantity`.
+create table if not exists inventory_movements (
+  id serial primary key,
+  inventory_id integer not null references inventory(id) on delete cascade,
+  change numeric not null,
+  reason text not null check (reason in ('order_deduct', 'order_restock', 'manual_set', 'manual_adjust')),
+  reference text,
+  created_at timestamptz not null default now()
+);
+create index if not exists idx_inventory_movements_inventory_id on inventory_movements(inventory_id, created_at desc);
 
 create table if not exists recipe_ingredients (
   id serial primary key,

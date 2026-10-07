@@ -99,6 +99,7 @@ export const api = {
   updateInventoryQuantity: (id, quantity) =>
     request(`/inventory/${id}`, { method: "PATCH", body: JSON.stringify({ quantity }) }),
   deleteInventoryItem: (id) => request(`/inventory/${id}`, { method: "DELETE" }),
+  getInventoryMovements: (id) => request(`/inventory/${id}/movements`),
 
   getStaff: () => request("/staff"),
   createStaffMember: (member) => request("/staff", { method: "POST", body: JSON.stringify(member) }),

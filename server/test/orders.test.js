@@ -63,7 +63,10 @@ stub("data/inventory.js", {
     db.inventory[id] += amt;
   },
   getAll: async () => [],
-  update: async (id, f) => ({ id, ...f })
+  update: async (id, f) => ({ id, ...f }),
+  // Used by reportsController's "ingredient cost" stat — not exercised by any
+  // assertion here, just needs to resolve so that controller doesn't throw.
+  getIngredientCostSince: async () => 0
 });
 stub("data/orders.js", {
   create: async (o) => {

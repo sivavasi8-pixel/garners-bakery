@@ -91,14 +91,17 @@ const priceItems = async (rawItems, db) => {
 
 // Shared by order creation (deduct) and cancellation (restock). Per-kg lines scale
 // the recipe by their size, so a 2 kg cake uses twice the ingredients of a 1 kg one.
-const adjustStockForItems = async (items, direction, db) => {
+// orderId (when known) is logged alongside each movement, so the inventory history
+// can point back to exactly which order consumed or returned the stock.
+const adjustStockForItems = async (items, direction, db, orderId) => {
   const adjust = direction === "deduct" ? inventory.deduct : inventory.restock;
+  const reference = orderId ? String(orderId) : undefined;
   for (const item of items) {
     if (!item.menuItemId) continue;
     const multiplier = (item.qty || 1) * (item.size || 1);
     const ingredients = await recipes.getForMenuItem(item.menuItemId, db);
     for (const ing of ingredients) {
-      await adjust(ing.inventoryId, ing.qtyPerUnit * multiplier, db);
+      await adjust(ing.inventoryId, ing.qtyPerUnit * multiplier, db, reference);
     }
   }
 };
@@ -254,7 +257,7 @@ exports.createOrder = asyncHandler(async (req, res) => {
       db
     );
 
-    await adjustStockForItems(lines, "deduct", db);
+    await adjustStockForItems(lines, "deduct", db, created.id);
     return created;
   });
 
@@ -288,7 +291,7 @@ const cancelWithRestock = (orderId, user) =>
     }
 
     const updated = await orders.updateStatus(orderId, "cancelled", db);
-    await adjustStockForItems(order.items, "restock", db);
+    await adjustStockForItems(order.items, "restock", db, orderId);
 
     // Whichever side didn't do the cancelling is the side that needs telling —
     // a customer backing out needs the kitchen to stop; the shop cancelling

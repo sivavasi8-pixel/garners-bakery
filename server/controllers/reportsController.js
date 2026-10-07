@@ -1,5 +1,6 @@
 const orders = require("../data/orders");
 const expenses = require("../data/expenses");
+const inventory = require("../data/inventory");
 const asyncHandler = require("../middleware/asyncHandler");
 
 // YYYY-MM-DD for the bakery's own day (India time). toISOString() would use UTC and
@@ -8,7 +9,12 @@ const dayKey = (date) => new Date(date).toLocaleDateString("en-CA", { timeZone: 
 const DAY_MS = 24 * 60 * 60 * 1000;
 
 exports.getSummary = asyncHandler(async (req, res) => {
-  const [allOrders, allExpenses] = await Promise.all([orders.getAll(), expenses.getAll()]);
+  const [allOrders, allExpenses, ingredientCostLast7Days, ingredientCostLast30Days] = await Promise.all([
+    orders.getAll(),
+    expenses.getAll(),
+    inventory.getIngredientCostSince(7),
+    inventory.getIngredientCostSince(30)
+  ]);
   // Cancelled orders never became sales — they're left out of revenue, daily totals
   // and best sellers (they still show in ordersByStatus below).
   const sales = allOrders.filter((o) => o.status !== "cancelled");
@@ -69,6 +75,11 @@ exports.getSummary = asyncHandler(async (req, res) => {
     revenueLast7Days,
     expensesLast7Days,
     profitLast7Days: revenueLast7Days - expensesLast7Days,
-    recentExpenses: allExpenses.slice(0, 10)
+    recentExpenses: allExpenses.slice(0, 10),
+    // Estimated from actual recipe-driven consumption × each ingredient's cost_per_unit
+    // — distinct from (and not yet reconciled with) the hand-typed "ingredients" Expenses
+    // category below. Only counts ingredients that have a cost on file (Inventory page).
+    ingredientCostLast7Days,
+    ingredientCostLast30Days
   });
 });
