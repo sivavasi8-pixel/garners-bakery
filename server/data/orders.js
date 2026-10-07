@@ -49,10 +49,9 @@ module.exports = {
     const { rows } = await pool.query(`select ${COLS} from orders order by id desc`);
     return rows.map(mapRow);
   },
-  // Lean alternatives to getAll() for things that don't need full order history:
-  // the notification bell (polled every 30s per logged-in staff member) and the
-  // dashboard's queue/pending count. Both used to call getAll() and filter in
-  // JS, which meant reading every order ever placed on every poll.
+  // A lean alternative to getAll() for the dashboard's queue/pending count,
+  // which doesn't need full order history — it used to call getAll() and
+  // filter in JS, reading every order ever placed just to count a few.
   getActive: async () => {
     const { rows } = await pool.query(
       `select ${COLS} from orders where status not in ('delivered', 'cancelled') order by id desc`

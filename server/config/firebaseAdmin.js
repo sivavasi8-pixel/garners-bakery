@@ -5,10 +5,9 @@
 // browser" rule as DATABASE_URL and JWT_SECRET.
 //
 // Lazily initialized and tolerant of a missing/invalid credential: push
-// notifications are additive (the app already works without them, via the
-// in-app NotificationBell), so a misconfigured or not-yet-set-up credential
-// should log once and let every caller no-op, never crash a request that
-// happens to trigger a push.
+// notifications are additive (the app already works without them), so a
+// misconfigured or not-yet-set-up credential should log once and let every
+// caller no-op, never crash a request that happens to trigger a push.
 const { initializeApp, cert } = require("firebase-admin/app");
 
 let app = null;

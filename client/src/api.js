@@ -118,7 +118,6 @@ export const api = {
   updateRecipe: (menuItemId, ingredients) =>
     request(`/menu/${menuItemId}/recipe`, { method: "PUT", body: JSON.stringify({ ingredients }) }),
 
-  getNotifications: () => request("/notifications"),
 
   getExpenses: () => request("/expenses"),
   createExpense: (expense) => request("/expenses", { method: "POST", body: JSON.stringify(expense) }),

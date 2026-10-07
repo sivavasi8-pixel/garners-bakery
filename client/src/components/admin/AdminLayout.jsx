@@ -1,7 +1,6 @@
 import { NavLink, Outlet, useNavigate } from "react-router-dom";
 import { useState } from "react";
 import { useAuth } from "../../auth/AuthContext";
-import NotificationBell from "../NotificationBell";
 import PushToggle from "../PushToggle";
 
 // Owner-only items are filtered in at render time (see navItems below) —
@@ -57,9 +56,6 @@ export default function AdminLayout() {
             <i className="ti ti-building-store" aria-hidden="true" />
             <span>View shop</span>
           </a>
-          <div className="admin-sidebar-bell">
-            <NotificationBell align="left" openUpward />
-          </div>
           <PushToggle className="admin-nav-item" />
           <div className="admin-sidebar-user">
             {user?.name} <span>{user?.email}</span>
@@ -93,11 +89,11 @@ export default function AdminLayout() {
              non-visible forces the other off "visible" too), which breaks
              sticky's scroll-container detection here. Fixed sidesteps that
              entirely; .admin-main below reserves the space with a margin.
-             No overflow-y here (deliberately) — it clips the notification
-             dropdown, which is position:absolute inside this sidebar and
-             needs to render outside the sidebar's own box. The nav content
-             (logo + 7 items + footer) comfortably fits 100vh regardless. */
-          position: fixed; top: 0; left: 0; height: 100vh; z-index: 25;
+             overflow-y: auto so Log out stays reachable (by scrolling the
+             sidebar itself) on a short window where the nav list + footer
+             together are taller than the viewport — e.g. a laptop with a lot
+             of browser chrome eating into the visible height. */
+          position: fixed; top: 0; left: 0; height: 100vh; z-index: 25; overflow-y: auto;
         }
         @media (min-width: 900px) { .admin-sidebar { display: flex; } }
 
@@ -124,7 +120,6 @@ export default function AdminLayout() {
         .admin-logout { cursor: pointer; }
 
         .admin-sidebar-footer { margin-top: auto; padding-top: 12px; border-top: 1px solid rgba(250,248,243,0.14); }
-        .admin-sidebar-bell { padding: 4px 12px 8px; }
         .admin-sidebar-user { font-size: 13px; font-weight: 600; color: #faf8f3; padding: 6px 12px; overflow-wrap: anywhere; }
         .admin-sidebar-user span { display: block; color: var(--a-sidebar-text); font-size: 12px; font-weight: 400; }
 
@@ -157,7 +152,6 @@ function MobileTopbar({ navItems, onLogout }) {
           </span>
         </div>
         <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-          <NotificationBell />
           <button
             className="admin-mobile-menu-btn"
             onClick={() => setOpen((o) => !o)}
