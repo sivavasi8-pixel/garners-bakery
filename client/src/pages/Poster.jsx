@@ -17,7 +17,9 @@ const CATEGORY_ORDER = ["special", "breads", "buns", "pastries", "cookies", "cak
 
 const POSTER_W = 1080;
 const PHONE = "7812813248";
-const ADDRESS = "Whitefield, Kannamangala";
+// Fallback only — the real value comes from Settings (shopAddress), fetched
+// in the component below, so the owner can change it without a code deploy.
+const DEFAULT_ADDRESS = "Whitefield, Kannamangala";
 
 const GREEN = "#1f3d2e";
 const GOLD = "#b8925a";
@@ -229,7 +231,7 @@ const QR_BOX = 240;
 // Renders the poster onto a canvas at a fixed 1080px width, growing its height
 // to fit however many items are on today's list — this is what used to be
 // designed by hand in an external tool every morning.
-function drawPoster(canvas, { groups, images, dateLabel, orderUrl, qr }) {
+function drawPoster(canvas, { groups, images, dateLabel, orderUrl, qr, address }) {
   const padX = 64;
   const colGap = 28;
   const colW = (POSTER_W - padX * 2 - colGap) / 2;
@@ -347,8 +349,8 @@ function drawPoster(canvas, { groups, images, dateLabel, orderUrl, qr }) {
 
     ctx.font = "600 22px Inter, sans-serif";
     drawPinIcon(ctx, tx + 10, top + 164, 20, GREEN);
-    ctx.fillText(ADDRESS, tx + 30, top + 172);
-    const addrEnd = tx + 30 + ctx.measureText(ADDRESS).width;
+    ctx.fillText(address, tx + 30, top + 172);
+    const addrEnd = tx + 30 + ctx.measureText(address).width;
     drawPhoneIcon(ctx, addrEnd + 40, top + 164, 18, GREEN);
     ctx.fillText(PHONE, addrEnd + 56, top + 172);
     return;
@@ -358,14 +360,14 @@ function drawPoster(canvas, { groups, images, dateLabel, orderUrl, qr }) {
   ctx.fillStyle = GREEN;
   const iconGap = 30; // icon glyph + gap before its text
   const phoneW = ctx.measureText(PHONE).width;
-  const addrW = ctx.measureText(ADDRESS).width;
+  const addrW = ctx.measureText(address).width;
   const dividerGap = 28;
   const totalW = iconGap + addrW + dividerGap + 1 + dividerGap + iconGap + phoneW;
   const startX = POSTER_W / 2 - totalW / 2;
   const textY = footerY + 50;
 
   drawPinIcon(ctx, startX + 10, textY - 8, 22, GREEN);
-  ctx.fillText(ADDRESS, startX + iconGap, textY);
+  ctx.fillText(address, startX + iconGap, textY);
 
   const dividerX = startX + iconGap + addrW + dividerGap;
   ctx.strokeStyle = BORDER;
@@ -423,6 +425,7 @@ export default function Poster() {
   const [message, setMessage] = useState("");
   const [messageEdited, setMessageEdited] = useState(false);
   const [status, setStatus] = useState(null);
+  const [shopAddress, setShopAddress] = useState(DEFAULT_ADDRESS);
   const canvasRef = useRef(null);
   const fileRef = useRef(null);
   const orderUrl = `${window.location.origin}/order`;
@@ -430,6 +433,9 @@ export default function Poster() {
 
   useEffect(() => {
     api.getMenu().then((d) => setMenu(d.items)).catch((e) => setError(e.message));
+    // Falls back to the hardcoded default if Settings hasn't been configured
+    // yet, or the request fails — the poster should never be blocked on this.
+    api.getSettings().then((s) => { if (s.shopAddress) setShopAddress(s.shopAddress); }).catch(() => {});
   }, []);
 
   // Everything that could go on today's poster: in stock, priced, not made-to-order.
@@ -505,7 +511,7 @@ export default function Poster() {
       if (cancelled || !canvasRef.current) return;
       const images = {};
       imageEntries.forEach(([label], i) => { images[label] = imgs[i]; });
-      drawPoster(canvasRef.current, { groups, images, dateLabel, orderUrl, qr });
+      drawPoster(canvasRef.current, { groups, images, dateLabel, orderUrl, qr, address: shopAddress });
       // Prepare the image file now, so the Share button can hand it over the
       // instant it's tapped (phones only allow sharing straight from a tap).
       canvasRef.current.toBlob((blob) => {
@@ -513,7 +519,7 @@ export default function Poster() {
       }, "image/png");
     });
     return () => { cancelled = true; };
-  }, [groups, dateLabel, orderUrl, qr]);
+  }, [groups, dateLabel, orderUrl, qr, shopAddress]);
 
   const copyMessage = async () => {
     try {

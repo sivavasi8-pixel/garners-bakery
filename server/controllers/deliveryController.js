@@ -1,14 +1,17 @@
 const orders = require("../data/orders");
 const asyncHandler = require("../middleware/asyncHandler");
 const { haversineKm } = require("../services/distance");
-const { STORE_LAT, STORE_LNG } = require("../config/storeLocation");
+const { getStoreLocation } = require("../config/storeLocation");
 
 // Only what a delivery partner actually needs — never the admin's full order
 // object (no payment internals beyond what they must collect, no other
 // customers' data). Distance is straight-line from the shop and only known
 // when the order itself has coordinates (i.e. the customer used "use my
 // current location" at checkout) — a typed-only address has none to measure.
-const deliveryView = (o) => ({
+// `store` is fetched once per request (see callers below), not baked in at
+// module load, so an owner updating the shop location in Settings takes
+// effect on the very next request.
+const deliveryView = (o, store) => ({
   id: o.id,
   customerName: o.customerName,
   customerPhone: o.customerPhone,
@@ -17,7 +20,7 @@ const deliveryView = (o) => ({
   deliveryLng: o.deliveryLng,
   distanceFromStoreKm:
     o.deliveryLat != null && o.deliveryLng != null
-      ? Math.round(haversineKm(STORE_LAT, STORE_LNG, o.deliveryLat, o.deliveryLng) * 10) / 10
+      ? Math.round(haversineKm(store.lat, store.lng, o.deliveryLat, o.deliveryLng) * 10) / 10
       : null,
   items: (o.items || []).map((i) => ({ name: i.name, qty: i.qty })),
   // Needed to know whether (and how much) cash to collect at the door.
@@ -66,13 +69,15 @@ const attachNearby = (list) => {
 
 // Unclaimed, ready-for-delivery orders.
 exports.listAvailable = asyncHandler(async (req, res) => {
-  const list = attachNearby((await orders.getAvailableForDelivery()).map(deliveryView)).sort(byPriorityThenDistance);
+  const store = await getStoreLocation();
+  const list = attachNearby((await orders.getAvailableForDelivery()).map((o) => deliveryView(o, store))).sort(byPriorityThenDistance);
   res.json({ orders: list });
 });
 
 exports.listMine = asyncHandler(async (req, res) => {
+  const store = await getStoreLocation();
   const list = await orders.getClaimedByAgent(req.user.id);
-  res.json({ orders: list.map(deliveryView) });
+  res.json({ orders: list.map((o) => deliveryView(o, store)) });
 });
 
 exports.claim = asyncHandler(async (req, res) => {
@@ -80,7 +85,7 @@ exports.claim = asyncHandler(async (req, res) => {
   if (!claimed) {
     return res.status(409).json({ error: "Someone already picked this one up — check the available list again." });
   }
-  res.json({ order: deliveryView(claimed) });
+  res.json({ order: deliveryView(claimed, await getStoreLocation()) });
 });
 
 exports.release = asyncHandler(async (req, res) => {
@@ -88,7 +93,7 @@ exports.release = asyncHandler(async (req, res) => {
   if (!released) {
     return res.status(404).json({ error: "You don't currently have this order" });
   }
-  res.json({ order: deliveryView(released) });
+  res.json({ order: deliveryView(released, await getStoreLocation()) });
 });
 
 exports.markDelivered = asyncHandler(async (req, res) => {
@@ -96,5 +101,5 @@ exports.markDelivered = asyncHandler(async (req, res) => {
   if (!delivered) {
     return res.status(404).json({ error: "You don't currently have this order" });
   }
-  res.json({ order: deliveryView(delivered) });
+  res.json({ order: deliveryView(delivered, await getStoreLocation()) });
 });
